@@ -1,0 +1,36 @@
+{
+  "name": "jobseeker",
+  "version": "1.0.0",
+  "description": "Automated job search and application tool",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "web": "node src/webServer.js",
+    "dev": "nodemon src/index.js",
+    "web-dev": "nodemon src/webServer.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "job",
+    "automation",
+    "indeed",
+    "craigslist",
+    "application"
+  ],
+  "author": "Matthew Nicholson",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "cheerio": "^1.0.0-rc.12",
+    "dotenv": "^16.3.1",
+    "express": "^4.21.2",
+    "fs-extra": "^11.1.1",
+    "multer": "^1.4.5-lts.1",
+    "openai": "^4.20.0",
+    "playwright": "^1.40.0",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

@@ -5,12 +5,21 @@ class IndeedScraper {
     constructor() {
         this.baseUrl = 'https://www.indeed.com';
         this.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
         };
     }
 
     async searchJobs(location, keywords = '', jobType = 'parttime') {
         try {
+            // Add delay to avoid rate limiting
+            await this.delay(1000 + Math.random() * 2000);
+
             const params = {
                 q: keywords,
                 l: location,
@@ -22,7 +31,11 @@ class IndeedScraper {
             const searchUrl = `${this.baseUrl}/jobs?${new URLSearchParams(params)}`;
             console.log(`🔍 Searching Indeed: ${searchUrl}`);
 
-            const response = await axios.get(searchUrl, { headers: this.headers });
+            const response = await axios.get(searchUrl, {
+                headers: this.headers,
+                timeout: 15000,
+                maxRedirects: 5
+            });
             const $ = cheerio.load(response.data);
 
             const jobs = [];
@@ -103,6 +116,10 @@ class IndeedScraper {
             }
         });
         return benefits;
+    }
+
+    async delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
 

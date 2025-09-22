@@ -50,3 +50,13 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
+
+# Personal data files (resumes, documents)
+*.docx
+*.pdf
+*.doc
+matthew-nicholson-*
+uploads/
+
+# Claude AI context
+.claude/

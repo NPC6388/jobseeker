@@ -2,6 +2,9 @@ const fs = require('fs-extra');
 const path = require('path');
 const IndeedScraper = require('./jobBoards/indeed');
 const LinkedInScraper = require('./jobBoards/linkedin');
+const CraigslistScraper = require('./jobBoards/craigslist');
+const ZipRecruiterScraper = require('./jobBoards/ziprecruiter');
+const MockJobsScraper = require('./jobBoards/mockjobs');
 const ApplicationManager = require('./applicationManager');
 const JobFilter = require('./jobFilter');
 
@@ -9,6 +12,9 @@ class JobSeeker {
     constructor() {
         this.indeedScraper = new IndeedScraper();
         this.linkedinScraper = new LinkedInScraper();
+        this.craigslistScraper = new CraigslistScraper();
+        this.ziprecruiterScraper = new ZipRecruiterScraper();
+        this.mockJobsScraper = new MockJobsScraper();
         this.applicationManager = new ApplicationManager();
         this.jobFilter = new JobFilter();
         this.appliedJobs = new Set();
@@ -90,12 +96,15 @@ class JobSeeker {
     async searchAllJobBoards(location, keywords) {
         console.log('🔍 Searching job boards...\n');
 
-        const [indeedJobs, linkedinJobs] = await Promise.all([
-            this.indeedScraper.searchJobs(location, keywords),
-            this.linkedinScraper.searchJobs(location, keywords)
+        const [indeedJobs, linkedinJobs, craigslistJobs, ziprecruiterJobs, mockJobs] = await Promise.all([
+            this.indeedScraper.searchJobs(location, keywords).catch(() => []),
+            this.linkedinScraper.searchJobs(location, keywords).catch(() => []),
+            this.craigslistScraper.searchJobs(location, keywords).catch(() => []),
+            this.ziprecruiterScraper.searchJobs(location, keywords).catch(() => []),
+            this.mockJobsScraper.searchJobs(location, keywords).catch(() => [])
         ]);
 
-        return [...indeedJobs, ...linkedinJobs];
+        return [...indeedJobs, ...linkedinJobs, ...craigslistJobs, ...ziprecruiterJobs, ...mockJobs];
     }
 
     async processJobApplication(job, isDryRun) {
@@ -130,7 +139,10 @@ class JobSeeker {
     }
 
     generateJobHash(job) {
-        return `${job.source}-${job.company}-${job.title}`.replace(/\s+/g, '-').toLowerCase();
+        const safeSource = (job.source || 'unknown').toString();
+        const safeCompany = (job.company || 'unknown').toString();
+        const safeTitle = (job.title || 'unknown').toString();
+        return `${safeSource}-${safeCompany}-${safeTitle}`.replace(/\s+/g, '-').toLowerCase();
     }
 
     async loadAppliedJobs() {

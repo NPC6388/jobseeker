@@ -57,21 +57,35 @@ An automated job search application that finds part-time day jobs in your local 
 
 ## Usage
 
-### Test Mode (Recommended First)
+### Web Interface (Recommended)
+```bash
+npm run web
+```
+Opens a private web dashboard at `http://localhost:3000` with:
+- 📊 Real-time job search monitoring
+- ⚙️ Easy configuration management
+- 📋 Complete application tracking with timestamps
+- 📁 Resume upload functionality
+- 📈 Live search progress and statistics
+
+### Command Line Interface
+
+#### Test Mode (Recommended First)
 ```bash
 npm start
 ```
 This runs in dry-run mode by default - it will search and filter jobs but won't actually apply.
 
-### Live Mode
+#### Live Mode
 Set `DRY_RUN=false` and `AUTO_SUBMIT=true` in your `.env` file, then:
 ```bash
 npm start
 ```
 
-### Development Mode
+#### Development Mode
 ```bash
 npm run dev
+npm run web-dev  # For web interface development
 ```
 Runs with auto-reload when files change.
 
