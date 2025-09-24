@@ -28,6 +28,7 @@ let isSearching = false;
 let currentJobSeeker = null;
 let jobResults = [];
 let appliedJobs = [];
+let lastGeneratedApplications = [];
 
 // Routes
 app.get('/', (req, res) => {
@@ -273,6 +274,9 @@ app.post('/api/generate-applications', async (req, res) => {
                 // Continue with other jobs even if one fails
             }
         }
+
+        // Store the generated applications for PDF download
+        lastGeneratedApplications = applications;
 
         res.json({
             applications: applications,
@@ -633,6 +637,14 @@ ${resume.certifications ? resume.certifications.filter(cert =>
 
         console.log(`📊 Original score: ${originalAnalysis.score}, Improved score: ${improvedAnalysis.score}`);
 
+        // Check if improvement actually improved the score
+        const scoreImproved = improvedAnalysis.score > originalAnalysis.score;
+        const scoreNote = scoreImproved ?
+            `✅ Resume score improved by ${Math.round(improvedAnalysis.score - originalAnalysis.score)} points!` :
+            `⚠️ The generator couldn't significantly improve your ATS score. Consider keeping your original resume or making manual adjustments based on the recommendations below.`;
+
+        console.log(`📈 Score improvement: ${scoreImproved ? 'Yes' : 'No'} - ${scoreNote}`);
+
         // Generate formatted documents
         const documentGenerator = new DocumentGenerator();
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -645,6 +657,8 @@ ${resume.certifications ? resume.certifications.filter(cert =>
             improvedResumeText,
             originalScore: Math.round(originalAnalysis.score),
             improvedScore: Math.round(improvedAnalysis.score),
+            scoreImproved,
+            scoreNote,
             improvements: originalAnalysis.recommendations,
             timestamp: new Date().toISOString(),
             documents: {
@@ -745,6 +759,81 @@ function generateImprovedResumeText(originalText, analysis, targetJobDescription
     console.log('📊 Minimal resume improvement completed - preserved all original content');
     return improvedText;
 }
+
+// Generate tailored resume PDF
+app.get('/api/download-tailored-resume/:index', async (req, res) => {
+    try {
+        const { index } = req.params;
+        const appIndex = parseInt(index);
+
+        if (isNaN(appIndex) || !lastGeneratedApplications || !lastGeneratedApplications[appIndex]) {
+            return res.status(404).json({ error: 'Tailored application not found' });
+        }
+
+        const app = lastGeneratedApplications[appIndex];
+        const documentGenerator = new DocumentGenerator();
+
+        console.log(`📄 Generating tailored resume PDF for ${app.job.title} at ${app.job.company}`);
+
+        // Generate PDF from the tailored resume text
+        const filename = `tailored-resume-${app.job.company.replace(/[^a-zA-Z0-9]/g, '')}-${Date.now()}.pdf`;
+        const pdfFilePath = await documentGenerator.generatePDF(app.resumeText, filename);
+
+        // Read the generated PDF file
+        const pdfBuffer = await fs.readFile(pdfFilePath);
+
+        res.set({
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="${filename}"`,
+            'Content-Length': pdfBuffer.length
+        });
+
+        res.send(pdfBuffer);
+        console.log(`✅ Tailored resume PDF generated: ${filename}`);
+
+    } catch (error) {
+        console.error('❌ Error generating tailored resume PDF:', error);
+        res.status(500).json({ error: 'Failed to generate tailored resume PDF' });
+    }
+});
+
+// Generate tailored cover letter PDF
+app.get('/api/download-tailored-coverletter/:index', async (req, res) => {
+    try {
+        const { index } = req.params;
+        const appIndex = parseInt(index);
+
+        if (isNaN(appIndex) || !lastGeneratedApplications || !lastGeneratedApplications[appIndex]) {
+            return res.status(404).json({ error: 'Tailored application not found' });
+        }
+
+        const app = lastGeneratedApplications[appIndex];
+        const documentGenerator = new DocumentGenerator();
+
+        console.log(`✉️ Generating tailored cover letter PDF for ${app.job.title} at ${app.job.company}`);
+
+        // Generate PDF from the cover letter text
+        const coverLetterText = app.coverLetter?.coverLetter || app.coverLetter || 'Cover letter not available';
+        const filename = `tailored-coverletter-${app.job.company.replace(/[^a-zA-Z0-9]/g, '')}-${Date.now()}.pdf`;
+        const pdfFilePath = await documentGenerator.generatePDF(coverLetterText, filename);
+
+        // Read the generated PDF file
+        const pdfBuffer = await fs.readFile(pdfFilePath);
+
+        res.set({
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="${filename}"`,
+            'Content-Length': pdfBuffer.length
+        });
+
+        res.send(pdfBuffer);
+        console.log(`✅ Tailored cover letter PDF generated: ${filename}`);
+
+    } catch (error) {
+        console.error('❌ Error generating tailored cover letter PDF:', error);
+        res.status(500).json({ error: 'Failed to generate tailored cover letter PDF' });
+    }
+});
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

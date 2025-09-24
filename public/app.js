@@ -696,13 +696,19 @@ function displayGeneratedApplications() {
 
             <div class="application-content">
                 <div>
-                    <h4 style="margin: 0 0 10px 0; color: #2c3e50;">📄 Tailored Resume</h4>
+                    <h4 style="margin: 0 0 10px 0; color: #2c3e50;">
+                        📄 Tailored Resume
+                        <a href="/api/download-tailored-resume/${index}" target="_blank" style="margin-left: 10px; color: #3498db; text-decoration: none; font-size: 0.85em;">📥 Open PDF</a>
+                    </h4>
                     <div class="resume-preview">
                         <pre style="white-space: pre-wrap; font-family: inherit; margin: 0; font-size: 0.85em; line-height: 1.4;">${escapeHtml((app.resumeText || 'Resume content not available').substring(0, 1000))}${(app.resumeText || '').length > 1000 ? '...\n\n[Resume continues...]' : ''}</pre>
                     </div>
                 </div>
                 <div>
-                    <h4 style="margin: 0 0 10px 0; color: #2c3e50;">✉️ Cover Letter</h4>
+                    <h4 style="margin: 0 0 10px 0; color: #2c3e50;">
+                        ✉️ Cover Letter
+                        <a href="/api/download-tailored-coverletter/${index}" target="_blank" style="margin-left: 10px; color: #3498db; text-decoration: none; font-size: 0.85em;">📥 Open PDF</a>
+                    </h4>
                     <div class="cover-letter-preview">
                         <pre style="white-space: pre-wrap; font-family: inherit; margin: 0; font-size: 0.85em; line-height: 1.4;">${escapeHtml(app.coverLetter?.coverLetter || app.coverLetter || 'Cover letter not available')}</pre>
                     </div>
@@ -845,6 +851,12 @@ function displayAnalysisResults(data) {
     const scoreBar = document.getElementById('scoreBar');
     scoreBar.style.width = `${analysis.score}%`;
 
+    // Update collapsed analysis results preview
+    const analysisScorePreview = document.getElementById('analysisScorePreview');
+    if (analysisScorePreview) {
+        analysisScorePreview.textContent = `(Score: ${Math.round(analysis.score)}/100)`;
+    }
+
     // Update score description
     const scoreDescription = document.getElementById('scoreDescription');
     if (analysis.score >= 80) {
@@ -899,10 +911,15 @@ function displayAnalysisResults(data) {
         strengthsList.appendChild(li);
     }
 
-    // Display recommendations
+    // Display recommendations (collapsed by default)
     const recommendationsList = document.getElementById('resumeRecommendations');
+    const recommendationsCount = document.getElementById('recommendationsCount');
+
     recommendationsList.innerHTML = '';
     if (analysis.recommendations.length > 0) {
+        // Update count display
+        recommendationsCount.textContent = `(${analysis.recommendations.length})`;
+
         analysis.recommendations.forEach(recommendation => {
             const li = document.createElement('li');
             li.textContent = recommendation;
@@ -911,9 +928,20 @@ function displayAnalysisResults(data) {
             li.style.background = '#f0f8ff';
             li.style.borderLeft = '3px solid #3498db';
             li.style.borderRadius = '3px';
+            li.style.fontSize = '13px';
+            li.style.lineHeight = '1.4';
             recommendationsList.appendChild(li);
         });
+    } else {
+        recommendationsCount.textContent = '(0)';
+        const li = document.createElement('li');
+        li.textContent = 'No specific recommendations available.';
+        recommendationsList.appendChild(li);
     }
+
+    // Ensure recommendations stay collapsed after update
+    recommendationsList.style.display = 'none';
+    document.getElementById('recommendationsToggle').textContent = '▶';
 
     // Display keyword analysis if available
     if (analysis.keywordAnalysis && Object.keys(analysis.keywordAnalysis).length > 0) {
@@ -985,7 +1013,10 @@ async function generateImprovedResume() {
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
 
-            alert(`Improved resume generated! Score improved from ${data.originalScore} to ${data.improvedScore}/100`);
+            const alertMessage = data.scoreImproved ?
+                `Improved resume generated! Score improved from ${data.originalScore} to ${data.improvedScore}/100` :
+                `Resume generated! Note: ${data.scoreNote}`;
+            alert(alertMessage);
         }
 
     } catch (error) {
@@ -1051,10 +1082,15 @@ function showDownloadModal(data) {
         width: 90%;
     `;
 
+    const modalTitle = data.scoreImproved ? '✅ Resume Generated Successfully!' : '📄 Resume Generated';
+    const scoreText = data.scoreImproved ?
+        `Score improved from <strong>${Math.round(data.originalScore)}</strong> to <strong>${Math.round(data.improvedScore)}/100</strong>` :
+        `<strong>Score Note:</strong> ${data.scoreNote}`;
+
     modal.innerHTML = `
-        <h3 style="margin: 0 0 15px 0; color: #2c3e50;">✅ Resume Generated Successfully!</h3>
+        <h3 style="margin: 0 0 15px 0; color: #2c3e50;">${modalTitle}</h3>
         <p style="margin: 0 0 20px 0; color: #7f8c8d; line-height: 1.4;">
-            Score improved from <strong>${Math.round(data.originalScore)}</strong> to <strong>${Math.round(data.improvedScore)}/100</strong>
+            ${scoreText}
         </p>
         <p style="margin: 0 0 25px 0; color: #2c3e50; font-weight: 500;">
             Choose your preferred download format:
@@ -1151,6 +1187,34 @@ function downloadFile(filename, downloadName) {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+}
+
+// Toggle recommendations visibility
+function toggleRecommendations() {
+    const recommendationsList = document.getElementById('resumeRecommendations');
+    const toggle = document.getElementById('recommendationsToggle');
+
+    if (recommendationsList.style.display === 'none' || recommendationsList.style.display === '') {
+        recommendationsList.style.display = 'block';
+        toggle.textContent = '▼';
+    } else {
+        recommendationsList.style.display = 'none';
+        toggle.textContent = '▶';
+    }
+}
+
+// Toggle analysis results visibility
+function toggleAnalysisResults() {
+    const analysisContent = document.getElementById('analysisContent');
+    const toggle = document.getElementById('analysisToggle');
+
+    if (analysisContent.style.display === 'none' || analysisContent.style.display === '') {
+        analysisContent.style.display = 'block';
+        toggle.textContent = '▼';
+    } else {
+        analysisContent.style.display = 'none';
+        toggle.textContent = '▶';
+    }
 }
 
 // Initialize the application when the page loads

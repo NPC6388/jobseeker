@@ -64,9 +64,12 @@ class DocumentGenerator {
         const headers = [
             'Professional Summary', 'Core Competencies', 'Professional Experience',
             'Education', 'Professional Credentials', 'Certifications', 'Key Achievements',
-            'EDUCATION & CREDENTIALS'
+            'EDUCATION & CREDENTIALS',
+            // Add ALL CAPS versions that are used by the tailored resume generator
+            'PROFESSIONAL SUMMARY', 'CORE COMPETENCIES', 'PROFESSIONAL EXPERIENCE',
+            'EDUCATION', 'PROFESSIONAL CREDENTIALS', 'CERTIFICATIONS', 'KEY ACHIEVEMENTS'
         ];
-        return headers.some(header => line.includes(header + ':') || line === header) ||
+        return headers.some(header => line.includes(header + ':') || line === header || line.trim() === header) ||
                line.includes('='.repeat(10)) || // Handle underlined headers
                line.trim().startsWith('EDUCATION & CREDENTIALS');
     }
@@ -285,10 +288,13 @@ class DocumentGenerator {
             }
         }
 
-        // Sections
+        // Sections (support both Title Case and ALL CAPS versions)
         const sectionOrder = [
-            'Professional Summary', 'Core Competencies', 'Professional Experience',
-            'Key Achievements', 'EDUCATION & CREDENTIALS', 'Education', 'Professional Credentials', 'Certifications'
+            'Professional Summary', 'PROFESSIONAL SUMMARY',
+            'Core Competencies', 'CORE COMPETENCIES',
+            'Professional Experience', 'PROFESSIONAL EXPERIENCE',
+            'Key Achievements', 'KEY ACHIEVEMENTS',
+            'EDUCATION & CREDENTIALS', 'Education', 'Professional Credentials', 'Certifications'
         ];
 
         for (const sectionName of sectionOrder) {
@@ -298,7 +304,7 @@ class DocumentGenerator {
                 html += `<div class="section-header">${sectionName}</div>`;
 
                 const content = sections[sectionName];
-                if (sectionName === 'Core Competencies') {
+                if (sectionName === 'Core Competencies' || sectionName === 'CORE COMPETENCIES') {
                     const skills = content.split('•').map(skill => skill.trim()).filter(skill => skill);
                     html += `<div class="section-content skills">${skills.join(' • ')}</div>`;
                 } else {
@@ -307,7 +313,7 @@ class DocumentGenerator {
                     for (const line of contentLines) {
                         if (line.trim()) {
                             const isBullet = line.startsWith('•') || line.startsWith('-');
-                            const isJobTitle = line.includes(' at ') && sectionName === 'Professional Experience';
+                            const isJobTitle = line.includes(' at ') && (sectionName === 'Professional Experience' || sectionName === 'PROFESSIONAL EXPERIENCE');
                             const className = isBullet ? 'bullet' : (isJobTitle ? 'job-title' : '');
                             html += `<div class="${className}">${line}</div>`;
                         }
