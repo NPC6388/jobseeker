@@ -1498,8 +1498,11 @@ class ResumeTailor {
             resumeText += '\n';
         });
 
-        // Education
-        resumeText += `EDUCATION\n`;
+        // Education & Credentials (Combined Section)
+        resumeText += `\nEDUCATION & CREDENTIALS\n`;
+        resumeText += `${'='.repeat(25)}\n`;
+
+        // Add education first
         const education = resume.education || [];
         education.forEach(edu => {
             resumeText += `${edu.degree || 'Degree'}\n`;
@@ -1510,13 +1513,11 @@ class ResumeTailor {
             resumeText += '\n';
         });
 
-        // Certifications (if available)
+        // Add certifications in the same section
         if (resume.certifications && resume.certifications.length > 0) {
-            resumeText += `CERTIFICATIONS\n`;
             resume.certifications.forEach(cert => {
-                resumeText += `• ${cert}\n`;
+                resumeText += `${cert}\n\n`;
             });
-            resumeText += '\n';
         }
 
         // Add ATS optimization note

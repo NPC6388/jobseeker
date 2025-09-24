@@ -19,18 +19,30 @@ class DocumentGenerator {
         let currentSection = null;
         let currentContent = [];
 
-        for (const line of lines) {
-            // Check if this line is a section header
-            if (this.isSectionHeader(line)) {
+        console.log('🔍 Parsing resume text. First 10 lines:');
+        lines.slice(0, 10).forEach((line, i) => console.log(`${i}: "${line}"`));
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
+
+            // Check if this line is a section header, or if it's followed by equals signs
+            if (this.isSectionHeader(line) || (nextLine && nextLine.includes('='.repeat(5)))) {
                 // Save previous section
                 if (currentSection) {
                     sections[currentSection] = currentContent.join('\n');
                 }
                 currentSection = line.replace(':', '');
                 currentContent = [];
-            } else if (currentSection) {
+                console.log(`📋 Found section: "${currentSection}"`);
+
+                // Skip the underline if present
+                if (nextLine && nextLine.includes('='.repeat(5))) {
+                    i++; // Skip the equals line
+                }
+            } else if (currentSection && !line.includes('='.repeat(5))) {
                 currentContent.push(line);
-            } else {
+            } else if (!currentSection) {
                 // Handle content before first section (name, contact info)
                 if (!sections['Contact']) {
                     sections['Contact'] = sections['Contact'] || '';
@@ -44,15 +56,19 @@ class DocumentGenerator {
             sections[currentSection] = currentContent.join('\n');
         }
 
+        console.log('📊 Parsed sections:', Object.keys(sections));
         return sections;
     }
 
     isSectionHeader(line) {
         const headers = [
             'Professional Summary', 'Core Competencies', 'Professional Experience',
-            'Education', 'Professional Credentials', 'Certifications', 'Key Achievements'
+            'Education', 'Professional Credentials', 'Certifications', 'Key Achievements',
+            'EDUCATION & CREDENTIALS'
         ];
-        return headers.some(header => line.includes(header + ':') || line === header);
+        return headers.some(header => line.includes(header + ':') || line === header) ||
+               line.includes('='.repeat(10)) || // Handle underlined headers
+               line.trim().startsWith('EDUCATION & CREDENTIALS');
     }
 
     async generateWordDocument(resumeText, filename = 'improved-resume.docx') {
@@ -91,7 +107,7 @@ class DocumentGenerator {
         // Add sections
         const sectionOrder = [
             'Professional Summary', 'Core Competencies', 'Professional Experience',
-            'Key Achievements', 'Education', 'Professional Credentials', 'Certifications'
+            'Key Achievements', 'EDUCATION & CREDENTIALS', 'Education', 'Professional Credentials', 'Certifications'
         ];
 
         for (const sectionName of sectionOrder) {
@@ -222,10 +238,14 @@ class DocumentGenerator {
                     margin-bottom: 8px;
                     border-bottom: 1px solid #ccc;
                     padding-bottom: 2px;
+                    page-break-after: avoid;
+                    break-after: avoid;
                 }
                 .section-content {
                     font-size: 11px;
                     margin-bottom: 12px;
+                    page-break-inside: avoid;
+                    break-inside: avoid;
                 }
                 .job-title {
                     font-weight: bold;
@@ -237,6 +257,19 @@ class DocumentGenerator {
                 .bullet {
                     margin-left: 20px;
                     margin-bottom: 4px;
+                }
+
+                /* Prevent section headers from appearing at bottom of page */
+                .section-wrapper {
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                    margin-bottom: 16px;
+                }
+
+                /* Keep education/credentials together */
+                .education-section {
+                    page-break-inside: avoid;
+                    break-inside: avoid;
                 }
             </style>
         </head>
@@ -255,11 +288,13 @@ class DocumentGenerator {
         // Sections
         const sectionOrder = [
             'Professional Summary', 'Core Competencies', 'Professional Experience',
-            'Key Achievements', 'Education', 'Professional Credentials', 'Certifications'
+            'Key Achievements', 'EDUCATION & CREDENTIALS', 'Education', 'Professional Credentials', 'Certifications'
         ];
 
         for (const sectionName of sectionOrder) {
             if (sections[sectionName]) {
+                const sectionClass = sectionName === 'EDUCATION & CREDENTIALS' ? 'section-wrapper education-section' : 'section-wrapper';
+                html += `<div class="${sectionClass}">`;
                 html += `<div class="section-header">${sectionName}</div>`;
 
                 const content = sections[sectionName];
@@ -268,7 +303,7 @@ class DocumentGenerator {
                     html += `<div class="section-content skills">${skills.join(' • ')}</div>`;
                 } else {
                     html += `<div class="section-content">`;
-                    const contentLines = content.split('\n').filter(line => line.trim());
+                    const contentLines = content.split('\n').filter(line => line.trim()).filter(line => !line.includes('='.repeat(10))); // Skip underline decorations
                     for (const line of contentLines) {
                         if (line.trim()) {
                             const isBullet = line.startsWith('•') || line.startsWith('-');
@@ -279,6 +314,7 @@ class DocumentGenerator {
                     }
                     html += `</div>`;
                 }
+                html += `</div>`; // Close section-wrapper
             }
         }
 

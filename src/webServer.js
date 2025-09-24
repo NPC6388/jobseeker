@@ -525,16 +525,16 @@ ${exp.title} at ${exp.company} (${exp.duration})
 ${exp.achievements ? exp.achievements.join('\n') : ''}
 `).join('\n') : ''}
 
-Education:
+
+EDUCATION & CREDENTIALS
+=========================
 ${resume.education ? resume.education.map(edu => `
 ${edu.degree} - ${edu.school} (${edu.year})
 ${edu.relevant || ''}
 `).join('\n') : ''}
-
-Certifications:
 ${resume.certifications ? resume.certifications.filter(cert =>
     !['Microsoft Office Specialist (MOS) - Excel', 'Customer Service Excellence Certificate', 'Data Entry Professional Certificate'].some(fake => cert.includes(fake))
-).join('\n') : ''}
+).map(cert => `${cert}`).join('\n') : ''}
             `.trim();
         }
 
@@ -609,16 +609,16 @@ ${exp.title} at ${exp.company} (${exp.duration})
 ${exp.achievements ? exp.achievements.join('\n') : ''}
 `).join('\n') : ''}
 
-Education:
+
+EDUCATION & CREDENTIALS
+=========================
 ${resume.education ? resume.education.map(edu => `
 ${edu.degree} - ${edu.school} (${edu.year})
 ${edu.relevant || ''}
 `).join('\n') : ''}
-
-Certifications:
 ${resume.certifications ? resume.certifications.filter(cert =>
     !['Microsoft Office Specialist (MOS) - Excel', 'Customer Service Excellence Certificate', 'Data Entry Professional Certificate'].some(fake => cert.includes(fake))
-).join('\n') : ''}
+).map(cert => `${cert}`).join('\n') : ''}
         `.trim();
 
         // Analyze original resume
