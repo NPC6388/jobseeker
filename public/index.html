@@ -567,6 +567,91 @@
                 </div>
             </div>
 
+            <!-- Resume Improvement Tool -->
+            <div class="panel control-panel">
+                <h2>📋 Resume Improvement Tool</h2>
+                <p style="margin-bottom: 20px; color: #7f8c8d;">Analyze your resume against 2025 ATS best practices and get personalized improvement suggestions.</p>
+
+                <div style="margin-bottom: 20px;">
+                    <label for="targetJobDescription" style="display: block; margin-bottom: 8px; font-weight: 600;">Target Job Description (Optional):</label>
+                    <textarea
+                        id="targetJobDescription"
+                        placeholder="Paste a job description here to get targeted keyword analysis..."
+                        style="width: 100%; height: 100px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-family: inherit; resize: vertical;"
+                    ></textarea>
+                </div>
+
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <button class="btn btn-primary" id="analyzeResume">🔍 Analyze Resume</button>
+                </div>
+
+                <!-- Analysis Results -->
+                <div id="resumeAnalysisResults" style="display: block;">
+                    <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                        <h3 style="margin-bottom: 15px; color: #2c3e50;">📊 Analysis Results</h3>
+
+                        <!-- Score Display -->
+                        <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                            <div style="margin-right: 20px;">
+                                <div style="font-size: 2em; font-weight: bold; color: #3498db;" id="resumeScore">--</div>
+                                <div style="color: #7f8c8d;">Score</div>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="background: #ecf0f1; height: 10px; border-radius: 5px; overflow: hidden;">
+                                    <div id="scoreBar" style="height: 100%; background: linear-gradient(90deg, #e74c3c 0%, #f39c12 50%, #27ae60 100%); width: 0%; transition: width 0.5s;"></div>
+                                </div>
+                                <div style="margin-top: 5px; color: #7f8c8d; font-size: 0.9em;" id="scoreDescription">Click "Analyze Resume" to get started</div>
+                            </div>
+                        </div>
+
+                        <!-- Issues and Recommendations -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <h4 style="color: #e74c3c; margin-bottom: 10px;">❌ Issues Found</h4>
+                                <ul id="resumeIssues" style="list-style: none; padding: 0; color: #7f8c8d;">
+                                    <li>Run analysis to see issues...</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h4 style="color: #27ae60; margin-bottom: 10px;">✅ Strengths</h4>
+                                <ul id="resumeStrengths" style="list-style: none; padding: 0; color: #7f8c8d;">
+                                    <li>Run analysis to see strengths...</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Recommendations -->
+                        <div style="margin-top: 20px;">
+                            <h4 style="color: #3498db; margin-bottom: 10px;">💡 Recommendations</h4>
+                            <ul id="resumeRecommendations" style="list-style: none; padding: 0; color: #7f8c8d;">
+                                <li>Run analysis to get personalized recommendations...</li>
+                            </ul>
+                        </div>
+
+                        <!-- Keyword Analysis -->
+                        <div id="keywordAnalysis" style="margin-top: 20px; display: none;">
+                            <h4 style="color: #9b59b6; margin-bottom: 10px;">🔍 Keyword Analysis</h4>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div>
+                                    <strong>Matching Keywords:</strong>
+                                    <div id="matchingKeywords" style="margin-top: 5px; font-size: 0.9em; color: #27ae60;">--</div>
+                                </div>
+                                <div>
+                                    <strong>Missing Keywords:</strong>
+                                    <div id="missingKeywords" style="margin-top: 5px; font-size: 0.9em; color: #e74c3c;">--</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div style="margin-top: 25px; text-align: center;">
+                            <button class="btn btn-success" id="generateImprovedResume" style="margin-right: 10px;">✨ Generate Improved Resume</button>
+                            <button class="btn btn-primary" id="downloadOriginal" style="margin-right: 10px;">📄 Download Original</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Job Results -->
             <div class="panel">
                 <h2>Found Jobs</h2>

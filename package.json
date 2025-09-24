@@ -22,12 +22,15 @@
   "dependencies": {
     "axios": "^1.6.0",
     "cheerio": "^1.0.0-rc.12",
+    "docx": "^9.5.1",
     "dotenv": "^16.3.1",
     "express": "^4.21.2",
     "fs-extra": "^11.1.1",
+    "mammoth": "^1.11.0",
     "multer": "^1.4.5-lts.1",
     "openai": "^4.20.0",
     "playwright": "^1.40.0",
+    "puppeteer": "^24.22.2",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {

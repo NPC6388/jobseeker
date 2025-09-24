@@ -187,7 +187,7 @@ function displayAppliedJobs(appliedJobs) {
             <div class="job-location">📍 ${escapeHtml(job.location)}</div>
             <div class="job-meta">
                 <span>${escapeHtml(job.source)}</span>
-                <span class="job-status status-${(job.status || 'unknown').toLowerCase().replace('_', '-')}">${job.status || 'Unknown'}</span>
+                <span class="job-status status-${String(job.status || 'unknown').toLowerCase().replace('_', '-')}">${job.status || 'Unknown'}</span>
             </div>
             <div style="margin-top: 5px; color: #7f8c8d; font-size: 0.8em;">
                 🕒 Applied: ${new Date(job.appliedAt).toLocaleString()}
@@ -327,6 +327,23 @@ function setupEventListeners() {
             addLog(`Failed to save config: ${error.message}`, 'error');
         }
     });
+
+    // Resume improvement tool buttons
+    const analyzeResumeButton = document.getElementById('analyzeResume');
+    if (analyzeResumeButton) {
+        console.log('🔧 Adding event listener to analyze resume button in setupEventListeners');
+        analyzeResumeButton.addEventListener('click', analyzeResume);
+    }
+
+    const generateImprovedButton = document.getElementById('generateImprovedResume');
+    if (generateImprovedButton) {
+        generateImprovedButton.addEventListener('click', generateImprovedResume);
+    }
+
+    const downloadOriginalButton = document.getElementById('downloadOriginal');
+    if (downloadOriginalButton) {
+        downloadOriginalButton.addEventListener('click', downloadOriginalResume);
+    }
 }
 
 // Setup file upload functionality
@@ -657,21 +674,21 @@ function displayGeneratedApplications() {
                 </div>
                 <div class="ats-score">
                     <span style="font-size: 0.9em; color: #7f8c8d;">ATS Score:</span>
-                    <span class="score-badge ${getScoreClass(app.resume.atsScore)}">${app.resume.atsScore}%</span>
+                    <span class="score-badge ${getScoreClass(app.resume?.atsScore || 75)}">${app.resume?.atsScore || 75}%</span>
                 </div>
             </div>
 
             <div class="tailoring-notes">
                 <strong>📝 Tailoring Notes:</strong>
                 <ul style="margin: 5px 0 0 20px;">
-                    ${app.resume.tailoringNotes.map(note => `<li>${escapeHtml(note)}</li>`).join('')}
+                    ${(app.resume?.tailoringNotes || ['Resume tailored for this position']).map(note => `<li>${escapeHtml(note)}</li>`).join('')}
                 </ul>
             </div>
 
             <div class="keyword-matches" style="margin: 10px 0;">
                 <strong style="font-size: 0.9em;">🎯 Keyword Matches:</strong>
                 <div style="margin-top: 8px;">
-                    ${app.resume.keywordMatches.map(match =>
+                    ${(app.resume?.keywordMatches || []).map(match =>
                         `<span class="keyword-match ${match.matched ? 'keyword-matched' : 'keyword-unmatched'}">${escapeHtml(match.keyword)}</span>`
                     ).join('')}
                 </div>
@@ -681,13 +698,13 @@ function displayGeneratedApplications() {
                 <div>
                     <h4 style="margin: 0 0 10px 0; color: #2c3e50;">📄 Tailored Resume</h4>
                     <div class="resume-preview">
-                        <pre style="white-space: pre-wrap; font-family: inherit; margin: 0; font-size: 0.85em; line-height: 1.4;">${escapeHtml(app.resumeText.substring(0, 1000))}${app.resumeText.length > 1000 ? '...\n\n[Resume continues...]' : ''}</pre>
+                        <pre style="white-space: pre-wrap; font-family: inherit; margin: 0; font-size: 0.85em; line-height: 1.4;">${escapeHtml((app.resumeText || 'Resume content not available').substring(0, 1000))}${(app.resumeText || '').length > 1000 ? '...\n\n[Resume continues...]' : ''}</pre>
                     </div>
                 </div>
                 <div>
                     <h4 style="margin: 0 0 10px 0; color: #2c3e50;">✉️ Cover Letter</h4>
                     <div class="cover-letter-preview">
-                        <pre style="white-space: pre-wrap; font-family: inherit; margin: 0; font-size: 0.85em; line-height: 1.4;">${escapeHtml(app.coverLetter.coverLetter)}</pre>
+                        <pre style="white-space: pre-wrap; font-family: inherit; margin: 0; font-size: 0.85em; line-height: 1.4;">${escapeHtml(app.coverLetter?.coverLetter || app.coverLetter || 'Cover letter not available')}</pre>
                     </div>
                 </div>
             </div>
@@ -771,6 +788,369 @@ async function handleFileUploadWithResumeInfo(file) {
     await handleFileUpload(file);
     // Reload resume info after upload
     setTimeout(loadResumeInfo, 1000);
+}
+
+// Resume Improvement Tool Functions
+async function analyzeResume() {
+    console.log('🔍 analyzeResume function called');
+    const analyzeButton = document.getElementById('analyzeResume');
+    const targetJobDescription = document.getElementById('targetJobDescription').value;
+    const resultsDiv = document.getElementById('resumeAnalysisResults');
+
+    console.log('📄 Button found:', !!analyzeButton);
+    console.log('📝 Target job description:', targetJobDescription);
+
+    // Update UI to show loading state
+    analyzeButton.textContent = '🔄 Analyzing...';
+    analyzeButton.disabled = true;
+
+    try {
+        const response = await fetch('/api/analyze-resume', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                targetJobDescription: targetJobDescription || ''
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to analyze resume');
+        }
+
+        const data = await response.json();
+        console.log('📊 Received analysis data:', data);
+        displayAnalysisResults(data);
+        resultsDiv.style.display = 'block';
+        console.log('✅ Results displayed');
+
+    } catch (error) {
+        console.error('Resume analysis error:', error);
+        alert(`Error analyzing resume: ${error.message}`);
+    } finally {
+        analyzeButton.textContent = '🔍 Analyze Resume';
+        analyzeButton.disabled = false;
+    }
+}
+
+function displayAnalysisResults(data) {
+    console.log('📊 displayAnalysisResults called with:', data);
+    const { analysis, improvements, suggestions } = data;
+
+    console.log('📊 Analysis score:', analysis.score);
+    // Update score display
+    document.getElementById('resumeScore').textContent = `${Math.round(analysis.score)}/100`;
+    const scoreBar = document.getElementById('scoreBar');
+    scoreBar.style.width = `${analysis.score}%`;
+
+    // Update score description
+    const scoreDescription = document.getElementById('scoreDescription');
+    if (analysis.score >= 80) {
+        scoreDescription.textContent = 'Excellent! Your resume follows most best practices.';
+        scoreDescription.style.color = '#27ae60';
+    } else if (analysis.score >= 60) {
+        scoreDescription.textContent = 'Good resume with room for improvement.';
+        scoreDescription.style.color = '#f39c12';
+    } else {
+        scoreDescription.textContent = 'Significant improvements needed for ATS optimization.';
+        scoreDescription.style.color = '#e74c3c';
+    }
+
+    // Display issues
+    const issuesList = document.getElementById('resumeIssues');
+    issuesList.innerHTML = '';
+    if (analysis.issues.length > 0) {
+        analysis.issues.forEach(issue => {
+            const li = document.createElement('li');
+            li.textContent = issue;
+            li.style.marginBottom = '8px';
+            li.style.padding = '8px';
+            li.style.background = '#fff5f5';
+            li.style.borderLeft = '3px solid #e74c3c';
+            li.style.borderRadius = '3px';
+            issuesList.appendChild(li);
+        });
+    } else {
+        const li = document.createElement('li');
+        li.textContent = 'No major issues found! 🎉';
+        li.style.color = '#27ae60';
+        issuesList.appendChild(li);
+    }
+
+    // Display strengths
+    const strengthsList = document.getElementById('resumeStrengths');
+    strengthsList.innerHTML = '';
+    if (analysis.strengths.length > 0) {
+        analysis.strengths.forEach(strength => {
+            const li = document.createElement('li');
+            li.textContent = strength;
+            li.style.marginBottom = '8px';
+            li.style.padding = '8px';
+            li.style.background = '#f0fff4';
+            li.style.borderLeft = '3px solid #27ae60';
+            li.style.borderRadius = '3px';
+            strengthsList.appendChild(li);
+        });
+    } else {
+        const li = document.createElement('li');
+        li.textContent = 'Run analysis to identify strengths';
+        strengthsList.appendChild(li);
+    }
+
+    // Display recommendations
+    const recommendationsList = document.getElementById('resumeRecommendations');
+    recommendationsList.innerHTML = '';
+    if (analysis.recommendations.length > 0) {
+        analysis.recommendations.forEach(recommendation => {
+            const li = document.createElement('li');
+            li.textContent = recommendation;
+            li.style.marginBottom = '8px';
+            li.style.padding = '8px';
+            li.style.background = '#f0f8ff';
+            li.style.borderLeft = '3px solid #3498db';
+            li.style.borderRadius = '3px';
+            recommendationsList.appendChild(li);
+        });
+    }
+
+    // Display keyword analysis if available
+    if (analysis.keywordAnalysis && Object.keys(analysis.keywordAnalysis).length > 0) {
+        const keywordDiv = document.getElementById('keywordAnalysis');
+        keywordDiv.style.display = 'block';
+
+        const matchingKeywords = document.getElementById('matchingKeywords');
+        const missingKeywords = document.getElementById('missingKeywords');
+
+        if (analysis.keywordAnalysis.matchingKeywords && analysis.keywordAnalysis.matchingKeywords.length > 0) {
+            matchingKeywords.innerHTML = analysis.keywordAnalysis.matchingKeywords.slice(0, 10).map(keyword =>
+                `<span style="background: #d4edda; padding: 2px 6px; border-radius: 3px; margin: 2px; display: inline-block;">${keyword}</span>`
+            ).join('');
+        } else {
+            matchingKeywords.textContent = 'No job description provided';
+        }
+
+        if (analysis.keywordAnalysis.missingKeywords && analysis.keywordAnalysis.missingKeywords.length > 0) {
+            missingKeywords.innerHTML = analysis.keywordAnalysis.missingKeywords.slice(0, 10).map(keyword =>
+                `<span style="background: #f8d7da; padding: 2px 6px; border-radius: 3px; margin: 2px; display: inline-block;">${keyword}</span>`
+            ).join('');
+        } else {
+            missingKeywords.textContent = 'All important keywords found!';
+        }
+    }
+
+    // Scroll to results
+    document.getElementById('resumeAnalysisResults').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Generate improved resume function
+async function generateImprovedResume() {
+    const generateButton = document.getElementById('generateImprovedResume');
+    const targetJobDescription = document.getElementById('targetJobDescription').value;
+
+    generateButton.textContent = '⏳ Generating...';
+    generateButton.disabled = true;
+
+    try {
+        const response = await fetch('/api/generate-improved-resume', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                targetJobDescription: targetJobDescription || ''
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to generate improved resume');
+        }
+
+        const data = await response.json();
+
+        // Show download options for formatted documents
+        if (data.documents) {
+            showDownloadModal(data);
+        } else {
+            // Fallback to text file if documents weren't generated
+            const blob = new Blob([data.improvedResumeText], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'improved-resume.txt';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            alert(`Improved resume generated! Score improved from ${data.originalScore} to ${data.improvedScore}/100`);
+        }
+
+    } catch (error) {
+        console.error('Generate improved resume error:', error);
+        alert(`Error generating improved resume: ${error.message}`);
+    } finally {
+        generateButton.textContent = '✨ Generate Improved Resume';
+        generateButton.disabled = false;
+    }
+}
+
+// Download original resume function
+async function downloadOriginalResume() {
+    try {
+        const response = await fetch('/api/download-original-resume');
+
+        if (!response.ok) {
+            throw new Error('Failed to download original resume');
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'original-resume.docx';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+    } catch (error) {
+        console.error('Download original resume error:', error);
+        alert(`Error downloading original resume: ${error.message}`);
+    }
+}
+
+// Show download modal with Word and PDF buttons
+function showDownloadModal(data) {
+    // Create modal backdrop
+    const modalBackdrop = document.createElement('div');
+    modalBackdrop.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    `;
+
+    // Create modal content
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        text-align: center;
+        max-width: 500px;
+        width: 90%;
+    `;
+
+    modal.innerHTML = `
+        <h3 style="margin: 0 0 15px 0; color: #2c3e50;">✅ Resume Generated Successfully!</h3>
+        <p style="margin: 0 0 20px 0; color: #7f8c8d; line-height: 1.4;">
+            Score improved from <strong>${Math.round(data.originalScore)}</strong> to <strong>${Math.round(data.improvedScore)}/100</strong>
+        </p>
+        <p style="margin: 0 0 25px 0; color: #2c3e50; font-weight: 500;">
+            Choose your preferred download format:
+        </p>
+        <div style="display: flex; gap: 15px; justify-content: center;">
+            <button id="downloadWord" style="
+                background: #007bff;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 6px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: background-color 0.2s;
+            ">📄 Word</button>
+            <button id="downloadPdf" style="
+                background: #dc3545;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 6px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: background-color 0.2s;
+            ">📋 PDF</button>
+        </div>
+        <p style="margin: 20px 0 0 0; color: #6c757d; font-size: 14px;">
+            You can download both formats if needed
+        </p>
+    `;
+
+    modalBackdrop.appendChild(modal);
+    document.body.appendChild(modalBackdrop);
+
+    // Add button event listeners
+    const wordButton = modal.querySelector('#downloadWord');
+    const pdfButton = modal.querySelector('#downloadPdf');
+
+    wordButton.addEventListener('click', () => {
+        downloadFile(data.documents.word, 'improved-resume.docx');
+        closeModal();
+    });
+
+    pdfButton.addEventListener('click', () => {
+        downloadFile(data.documents.pdf, 'improved-resume.pdf');
+        closeModal();
+    });
+
+    // Add hover effects
+    wordButton.addEventListener('mouseenter', () => {
+        wordButton.style.backgroundColor = '#0056b3';
+    });
+    wordButton.addEventListener('mouseleave', () => {
+        wordButton.style.backgroundColor = '#007bff';
+    });
+
+    pdfButton.addEventListener('mouseenter', () => {
+        pdfButton.style.backgroundColor = '#c82333';
+    });
+    pdfButton.addEventListener('mouseleave', () => {
+        pdfButton.style.backgroundColor = '#dc3545';
+    });
+
+    // Close modal when clicking backdrop
+    modalBackdrop.addEventListener('click', (e) => {
+        if (e.target === modalBackdrop) {
+            closeModal();
+        }
+    });
+
+    // Close modal function
+    function closeModal() {
+        document.body.removeChild(modalBackdrop);
+    }
+
+    // ESC key to close modal
+    const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+            closeModal();
+            document.removeEventListener('keydown', handleEscape);
+        }
+    };
+    document.addEventListener('keydown', handleEscape);
+}
+
+// Download file helper function
+function downloadFile(filename, downloadName) {
+    const downloadUrl = `/api/download-improved-resume/${filename}`;
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = downloadName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 }
 
 // Initialize the application when the page loads

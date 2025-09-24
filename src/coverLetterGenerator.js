@@ -63,6 +63,15 @@ Best regards,
             // Determine the best template based on job title and description
             const template = this.selectTemplate(job);
 
+            // Ensure template is valid before using replace
+            if (!template || typeof template !== 'string') {
+                console.warn('Template is undefined or not a string, using general template');
+                return this.templates.general
+                    .replace(/{jobTitle}/g, job.title || 'the position')
+                    .replace(/{company}/g, job.company || 'your company')
+                    .replace(/{applicantName}/g, applicantName || 'Matthew Nicholson');
+            }
+
             // Replace placeholders with job-specific information
             let coverLetter = template
                 .replace(/{jobTitle}/g, job.title || 'the position')

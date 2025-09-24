@@ -389,7 +389,12 @@ class ApplicationDataExtractor {
 
     getTailoredSummary(jobTitle) {
         const titleLower = jobTitle.toLowerCase();
-        const baseSummary = this.extractedData.summary;
+        const baseSummary = this.extractedData?.summary || 'Dedicated professional seeking opportunities in customer service and administrative roles.';
+
+        // Ensure baseSummary is a string before calling replace
+        if (typeof baseSummary !== 'string') {
+            return 'Dedicated professional seeking opportunities in customer service and administrative roles.';
+        }
 
         if (titleLower.includes('customer')) {
             return baseSummary.replace('professional', 'customer service professional');
