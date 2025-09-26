@@ -80,7 +80,6 @@ class ApplicationDataExtractor {
                 }
             };
 
-            console.log('✅ Comprehensive application data extracted');
             return this.extractedData;
 
         } catch (error) {

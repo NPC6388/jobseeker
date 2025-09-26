@@ -10,11 +10,12 @@ I am excited to apply for the {jobTitle} position at {company}. With my strong c
 
 In my experience, I have developed skills in problem-solving, active listening, and maintaining a positive attitude even in challenging situations. I understand the importance of creating positive customer experiences and representing your company professionally.
 
-I am particularly interested in this {jobTitle} role because it offers the opportunity to work with people and make a meaningful impact on their experience with {company}. My availability during day hours makes me well-suited for this position.
+I am particularly interested in this {jobTitle} role because it offers the opportunity to work with people and make a meaningful impact on their experience with {company}. My availability for day shifts makes me well-suited for this position.
 
 Thank you for considering my application. I look forward to the opportunity to discuss how I can contribute to your customer service team.
 
 Sincerely,
+
 {applicantName}`,
 
             retail: `Dear Hiring Manager,
@@ -28,6 +29,7 @@ The {jobTitle} position at {company} appeals to me because it offers the chance 
 I would welcome the opportunity to discuss how my enthusiasm and work ethic can benefit your team. Thank you for your consideration.
 
 Best regards,
+
 {applicantName}`,
 
             dataEntry: `Dear Hiring Manager,
@@ -54,6 +56,7 @@ I am particularly attracted to this {jobTitle} role at {company} because it offe
 I would welcome the opportunity to discuss how my skills and enthusiasm can benefit your organization. Thank you for your time and consideration.
 
 Best regards,
+
 {applicantName}`
         };
     }
@@ -118,7 +121,6 @@ Best regards,
             const filePath = path.join(dataDir, filename);
             await fs.writeFile(filePath, coverLetter, 'utf8');
 
-            console.log(`📝 Cover letter saved to: ${filePath}`);
             return filePath;
 
         } catch (error) {

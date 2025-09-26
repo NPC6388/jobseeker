@@ -22,7 +22,6 @@ class JobSeeker {
     }
 
     async initialize() {
-        console.log('🚀 Initializing JobSeeker...');
 
         // Ensure data directory exists
         await fs.ensureDir(this.dataDir);
@@ -33,7 +32,6 @@ class JobSeeker {
         // Initialize LinkedIn scraper
         await this.linkedinScraper.initialize();
 
-        console.log('✅ JobSeeker initialized successfully\n');
     }
 
     async searchAndApply() {
@@ -46,10 +44,6 @@ class JobSeeker {
             throw new Error('SEARCH_LOCATION must be set in .env file');
         }
 
-        console.log(`📍 Searching for part-time day jobs in: ${location}`);
-        console.log(`🔍 Keywords: ${keywords || 'All jobs'}`);
-        console.log(`📊 Max applications per day: ${maxApplications}`);
-        console.log(`🧪 Dry run mode: ${isDryRun ? 'ON' : 'OFF'}\n`);
 
         try {
             // Search all job boards
@@ -63,13 +57,8 @@ class JobSeeker {
                 !this.appliedJobs.has(this.generateJobHash(job))
             );
 
-            console.log(`\n📋 Summary:`);
-            console.log(`   Total jobs found: ${allJobs.length}`);
-            console.log(`   After filtering: ${filteredJobs.length}`);
-            console.log(`   New jobs (not applied): ${newJobs.length}\n`);
 
             if (newJobs.length === 0) {
-                console.log('✅ No new jobs to apply to today!');
                 return;
             }
 
@@ -94,7 +83,6 @@ class JobSeeker {
     }
 
     async searchAllJobBoards(location, keywords) {
-        console.log('🔍 Searching job boards...\n');
 
         const [indeedJobs, linkedinJobs, craigslistJobs, ziprecruiterJobs, mockJobs] = await Promise.all([
             this.indeedScraper.searchJobs(location, keywords).catch(() => []),
@@ -108,12 +96,8 @@ class JobSeeker {
     }
 
     async processJobApplication(job, isDryRun) {
-        console.log(`\n📝 Processing: ${job.title} at ${job.company}`);
-        console.log(`   Source: ${job.source}`);
-        console.log(`   Location: ${job.location}`);
 
         if (isDryRun) {
-            console.log(`   ✅ DRY RUN - Would apply to this job`);
             this.appliedJobs.add(this.generateJobHash(job));
             return;
         }
@@ -122,13 +106,11 @@ class JobSeeker {
             const applied = await this.applicationManager.applyToJob(job);
 
             if (applied) {
-                console.log(`   ✅ Application submitted successfully!`);
                 this.appliedJobs.add(this.generateJobHash(job));
 
                 // Log application
                 await this.logApplication(job, 'SUCCESS');
             } else {
-                console.log(`   ⚠️  Could not submit application automatically`);
                 await this.logApplication(job, 'MANUAL_REQUIRED');
             }
 
@@ -152,7 +134,6 @@ class JobSeeker {
             if (await fs.pathExists(appliedJobsFile)) {
                 const data = await fs.readJson(appliedJobsFile);
                 this.appliedJobs = new Set(data.appliedJobs || []);
-                console.log(`📚 Loaded ${this.appliedJobs.size} previously applied jobs`);
             }
         } catch (error) {
             console.warn('⚠️  Could not load applied jobs file:', error.message);
@@ -206,9 +187,7 @@ class JobSeeker {
     }
 
     async cleanup() {
-        console.log('\n🧹 Cleaning up...');
         await this.linkedinScraper.close();
-        console.log('✅ Cleanup complete');
     }
 }
 

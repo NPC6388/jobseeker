@@ -21,7 +21,6 @@ class JobFilter {
     }
 
     filterJobs(jobs) {
-        console.log(`🔍 Filtering ${jobs.length} jobs for part-time day positions...`);
 
         const filtered = jobs.filter(job => {
             return this.isPartTimeJob(job) &&
@@ -30,7 +29,6 @@ class JobFilter {
                    this.meetsLocationRequirement(job);
         });
 
-        console.log(`✅ ${filtered.length} jobs passed filtering criteria`);
         return filtered;
     }
 
@@ -114,13 +112,6 @@ class JobFilter {
     printFilterReport(allJobs, filteredJobs) {
         const stats = this.getFilterStats(allJobs, filteredJobs);
 
-        console.log('\n📊 Filter Report:');
-        console.log(`   Total jobs found: ${stats.total}`);
-        console.log(`   Filtered out - Not part-time: ${stats.partTimeFilter}`);
-        console.log(`   Filtered out - Not day shift: ${stats.dayShiftFilter}`);
-        console.log(`   Filtered out - Excluded keywords: ${stats.excludedFilter}`);
-        console.log(`   Filtered out - Location: ${stats.locationFilter}`);
-        console.log(`   Jobs remaining: ${stats.filtered}`);
     }
 }
 

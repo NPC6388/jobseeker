@@ -2,8 +2,6 @@ require('dotenv').config();
 const JobSeeker = require('./jobSeeker');
 
 async function main() {
-    console.log('🔍 JobSeeker - Automated Job Search Tool');
-    console.log('==========================================\n');
 
     try {
         const jobSeeker = new JobSeeker();

@@ -20,7 +20,6 @@ class CraigslistScraper {
             };
 
             const searchUrl = `${craigslistUrl}/search/jjj?${new URLSearchParams(params)}`;
-            console.log(`🔍 Searching Craigslist: ${searchUrl}`);
 
             const response = await axios.get(searchUrl, { headers: this.headers });
             const $ = cheerio.load(response.data);
@@ -57,7 +56,6 @@ class CraigslistScraper {
                 }
             });
 
-            console.log(`✅ Found ${jobs.length} jobs on Craigslist`);
             return jobs;
 
         } catch (error) {

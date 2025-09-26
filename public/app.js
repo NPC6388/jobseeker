@@ -331,7 +331,6 @@ function setupEventListeners() {
     // Resume improvement tool buttons
     const analyzeResumeButton = document.getElementById('analyzeResume');
     if (analyzeResumeButton) {
-        console.log('🔧 Adding event listener to analyze resume button in setupEventListeners');
         analyzeResumeButton.addEventListener('click', analyzeResume);
     }
 
@@ -798,13 +797,9 @@ async function handleFileUploadWithResumeInfo(file) {
 
 // Resume Improvement Tool Functions
 async function analyzeResume() {
-    console.log('🔍 analyzeResume function called');
     const analyzeButton = document.getElementById('analyzeResume');
     const targetJobDescription = document.getElementById('targetJobDescription').value;
     const resultsDiv = document.getElementById('resumeAnalysisResults');
-
-    console.log('📄 Button found:', !!analyzeButton);
-    console.log('📝 Target job description:', targetJobDescription);
 
     // Update UI to show loading state
     analyzeButton.textContent = '🔄 Analyzing...';
@@ -827,10 +822,8 @@ async function analyzeResume() {
         }
 
         const data = await response.json();
-        console.log('📊 Received analysis data:', data);
         displayAnalysisResults(data);
         resultsDiv.style.display = 'block';
-        console.log('✅ Results displayed');
 
     } catch (error) {
         console.error('Resume analysis error:', error);
@@ -842,10 +835,7 @@ async function analyzeResume() {
 }
 
 function displayAnalysisResults(data) {
-    console.log('📊 displayAnalysisResults called with:', data);
     const { analysis, improvements, suggestions } = data;
-
-    console.log('📊 Analysis score:', analysis.score);
     // Update score display
     document.getElementById('resumeScore').textContent = `${Math.round(analysis.score)}/100`;
     const scoreBar = document.getElementById('scoreBar');

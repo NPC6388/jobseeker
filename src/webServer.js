@@ -116,7 +116,6 @@ app.post('/api/config', (req, res) => {
         // Update .env file
         updateEnvFile({ location, keywords, searchRadius, maxApplications, dryRun, autoSubmit });
 
-        console.log(`✅ Configuration updated: Location=${location}, Radius=${searchRadius}`);
 
         res.json({
             message: 'Configuration updated',
@@ -255,7 +254,10 @@ app.post('/api/generate-applications', async (req, res) => {
             try {
                 // Generate tailored resume
                 const tailoredResumeData = await resumeTailor.tailorResumeForJob(job);
-                const resumeText = await resumeTailor.generateResumeText(tailoredResumeData);
+                if (!tailoredResumeData) {
+                    throw new Error('Failed to generate tailored resume');
+                }
+                const resumeText = resumeTailor.generateResumeText(tailoredResumeData, job);
 
                 // Generate cover letter
                 const coverLetterData = coverLetterGenerator.generateCoverLetter(job);
@@ -267,7 +269,6 @@ app.post('/api/generate-applications', async (req, res) => {
                     coverLetter: coverLetterData
                 });
 
-                console.log(`✅ Generated application for ${job.title} at ${job.company}`);
 
             } catch (error) {
                 console.error(`❌ Error generating application for ${job.title}:`, error);
@@ -313,7 +314,6 @@ app.post('/api/submit-applications', async (req, res) => {
 
                     if (result) {
                         submitted++;
-                        console.log(`✅ Successfully submitted application for ${job.title} at ${job.company}`);
 
                         // Log the successful application
                         await currentJobSeeker.logApplication(job, 'SUCCESS');
@@ -331,14 +331,12 @@ app.post('/api/submit-applications', async (req, res) => {
                         });
                     } else {
                         failed++;
-                        console.log(`⚠️ Could not submit application automatically for ${job.title} at ${job.company}`);
 
                         // Log as manual required
                         await currentJobSeeker.logApplication(job, 'MANUAL_REQUIRED');
                     }
                 } else {
                     // Fallback - just log as applied for now
-                    console.log(`📝 Application prepared for ${job.title} at ${job.company} (no active job seeker)`);
                     submitted++;
                 }
 
@@ -422,16 +420,12 @@ function updateEnvFile(updates) {
         const envPath = path.join(__dirname, '..', '.env');
         let envContent = fs.readFileSync(envPath, 'utf8');
 
-        console.log('📝 Updating .env file with:', updates);
-
         if (updates.location !== undefined) {
             const regex = /^SEARCH_LOCATION=.*$/m;
             if (regex.test(envContent)) {
                 envContent = envContent.replace(regex, `SEARCH_LOCATION=${updates.location}`);
-                console.log(`✅ Updated SEARCH_LOCATION to: ${updates.location}`);
             } else {
                 envContent += `\nSEARCH_LOCATION=${updates.location}`;
-                console.log(`➕ Added SEARCH_LOCATION: ${updates.location}`);
             }
         }
         if (updates.keywords !== undefined) {
@@ -446,10 +440,8 @@ function updateEnvFile(updates) {
             const regex = /^SEARCH_RADIUS=.*$/m;
             if (regex.test(envContent)) {
                 envContent = envContent.replace(regex, `SEARCH_RADIUS=${updates.searchRadius}`);
-                console.log(`✅ Updated SEARCH_RADIUS to: ${updates.searchRadius}`);
             } else {
                 envContent += `\nSEARCH_RADIUS=${updates.searchRadius}`;
-                console.log(`➕ Added SEARCH_RADIUS: ${updates.searchRadius}`);
             }
         }
         if (updates.maxApplications !== undefined) {
@@ -486,7 +478,6 @@ function updateEnvFile(updates) {
         }
 
         fs.writeFileSync(envPath, envContent);
-        console.log('✅ .env file updated successfully');
     } catch (error) {
         console.error('❌ Error updating .env file:', error);
     }
@@ -494,17 +485,13 @@ function updateEnvFile(updates) {
 
 // Resume improvement API endpoint
 app.post('/api/analyze-resume', async (req, res) => {
-    console.log('🔍 Resume analysis endpoint called');
     try {
         const { targetJobDescription } = req.body;
-        console.log('📄 Target job description provided:', !!targetJobDescription);
 
         // Get current resume text
         const ResumeTailor = require('./resumeTailor');
         const resumeTailor = new ResumeTailor();
-        console.log('📥 Loading base resume...');
         await resumeTailor.loadBaseResume();
-        console.log('📋 Resume loaded:', !!resumeTailor.baseResume);
 
         // Extract text from resume for analysis
         let resumeText = '';
@@ -542,11 +529,7 @@ ${resume.certifications ? resume.certifications.filter(cert =>
             `.trim();
         }
 
-        console.log('📝 Resume text length:', resumeText.length);
-        console.log('📄 First 200 chars:', resumeText.substring(0, 200));
-
         if (!resumeText || resumeText.length < 100) {
-            console.log('❌ Resume text too short or empty');
             return res.status(400).json({
                 error: 'Unable to extract resume content for analysis. Please ensure your resume is properly loaded.'
             });
@@ -577,14 +560,12 @@ ${resume.certifications ? resume.certifications.filter(cert =>
 
 // Generate improved resume API endpoint
 app.post('/api/generate-improved-resume', async (req, res) => {
-    console.log('✨ Generate improved resume endpoint called');
     try {
         const { targetJobDescription } = req.body;
 
         // Get current resume and analysis
         const ResumeTailor = require('./resumeTailor');
         const resumeTailor = new ResumeTailor();
-        console.log('📥 Loading base resume for improvement...');
         await resumeTailor.loadBaseResume();
 
         if (!resumeTailor.baseResume || !resumeTailor.baseResume.personalInfo) {
@@ -635,22 +616,17 @@ ${resume.certifications ? resume.certifications.filter(cert =>
         // Analyze improved resume to get new score
         const improvedAnalysis = await resumeImprover.analyzeResume(improvedResumeText, targetJobDescription);
 
-        console.log(`📊 Original score: ${originalAnalysis.score}, Improved score: ${improvedAnalysis.score}`);
-
         // Check if improvement actually improved the score
         const scoreImproved = improvedAnalysis.score > originalAnalysis.score;
         const scoreNote = scoreImproved ?
             `✅ Resume score improved by ${Math.round(improvedAnalysis.score - originalAnalysis.score)} points!` :
             `⚠️ The generator couldn't significantly improve your ATS score. Consider keeping your original resume or making manual adjustments based on the recommendations below.`;
 
-        console.log(`📈 Score improvement: ${scoreImproved ? 'Yes' : 'No'} - ${scoreNote}`);
-
         // Generate formatted documents
         const documentGenerator = new DocumentGenerator();
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const baseFilename = `improved-resume-${timestamp}`;
 
-        console.log('📄 Generating formatted documents...');
         const documents = await documentGenerator.generateBothFormats(improvedResumeText, baseFilename);
 
         res.json({
@@ -729,23 +705,16 @@ app.get('/api/download-improved-resume/:filename', async (req, res) => {
 function generateImprovedResumeText(originalText, analysis, targetJobDescription) {
     let improvedText = originalText;
 
-    console.log('🔄 Starting minimal resume improvement process...');
-    console.log(`📊 Original analysis issues: ${analysis.issues.length}`);
-    console.log(`💡 Recommendations: ${analysis.recommendations.length}`);
-
     // 1. Fix obvious capitalization issues only
     improvedText = improvedText.replace(/white city, or/gi, 'White City, OR');
-    console.log('✅ Fixed city/state capitalization');
 
     // 2. Remove only specific fake certifications that don't belong (be very careful not to remove real content)
     improvedText = improvedText.replace(/Microsoft Office Specialist \(MOS\) - Excel\n/g, '');
     improvedText = improvedText.replace(/Customer Service Excellence Certificate\n/g, '');
     improvedText = improvedText.replace(/Data Entry Professional Certificate\n/g, '');
-    console.log('✅ Removed fake certifications');
 
     // 3. Clean up "Educational Institution" placeholders only
     improvedText = improvedText.replace(/ - Educational Institution \(\w+\)/g, '');
-    console.log('✅ Cleaned up placeholders');
 
     // 4. Only make one very specific improvement to quantified achievements if needed
     if (analysis.issues.some(issue => issue.includes('quantified'))) {
@@ -753,10 +722,8 @@ function generateImprovedResumeText(originalText, analysis, targetJobDescription
             /Achieved high compliance with deadline and quality targets, resulting in 20% increase in payment for 2018\./,
             'Exceeded project deadlines and quality targets, earning a 33% rate increase for 2018 contract.'
         );
-        console.log('✅ Enhanced one quantified achievement');
     }
 
-    console.log('📊 Minimal resume improvement completed - preserved all original content');
     return improvedText;
 }
 
@@ -773,8 +740,6 @@ app.get('/api/download-tailored-resume/:index', async (req, res) => {
         const app = lastGeneratedApplications[appIndex];
         const documentGenerator = new DocumentGenerator();
 
-        console.log(`📄 Generating tailored resume PDF for ${app.job.title} at ${app.job.company}`);
-
         // Generate PDF from the tailored resume text
         const filename = `tailored-resume-${app.job.company.replace(/[^a-zA-Z0-9]/g, '')}-${Date.now()}.pdf`;
         const pdfFilePath = await documentGenerator.generatePDF(app.resumeText, filename);
@@ -789,7 +754,6 @@ app.get('/api/download-tailored-resume/:index', async (req, res) => {
         });
 
         res.send(pdfBuffer);
-        console.log(`✅ Tailored resume PDF generated: ${filename}`);
 
     } catch (error) {
         console.error('❌ Error generating tailored resume PDF:', error);
@@ -810,8 +774,6 @@ app.get('/api/download-tailored-coverletter/:index', async (req, res) => {
         const app = lastGeneratedApplications[appIndex];
         const documentGenerator = new DocumentGenerator();
 
-        console.log(`✉️ Generating tailored cover letter PDF for ${app.job.title} at ${app.job.company}`);
-
         // Generate PDF from the cover letter text
         const coverLetterText = app.coverLetter?.coverLetter || app.coverLetter || 'Cover letter not available';
         const filename = `tailored-coverletter-${app.job.company.replace(/[^a-zA-Z0-9]/g, '')}-${Date.now()}.pdf`;
@@ -827,7 +789,6 @@ app.get('/api/download-tailored-coverletter/:index', async (req, res) => {
         });
 
         res.send(pdfBuffer);
-        console.log(`✅ Tailored cover letter PDF generated: ${filename}`);
 
     } catch (error) {
         console.error('❌ Error generating tailored cover letter PDF:', error);
@@ -837,21 +798,17 @@ app.get('/api/download-tailored-coverletter/:index', async (req, res) => {
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
-    console.log('Client connected');
 
     socket.emit('statusUpdate', {
         message: isSearching ? 'Search in progress...' : 'Ready to search jobs'
     });
 
     socket.on('disconnect', () => {
-        console.log('Client disconnected');
     });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`🌐 JobSeeker Web Interface running at http://localhost:${PORT}`);
-    console.log(`📱 Open your browser and navigate to the URL above`);
 });
 
 module.exports = app;

@@ -42,7 +42,6 @@ class MockJobsScraper {
 
     async searchJobs(location, keywords = '') {
         try {
-            console.log(`🔍 Searching Mock Jobs in ${location} for: ${keywords}`);
 
             // Simulate search delay
             await this.delay(500 + Math.random() * 1000);
@@ -84,7 +83,6 @@ class MockJobsScraper {
                 }
             });
 
-            console.log(`✅ Found ${jobs.length} mock jobs within ${radius} miles`);
             return jobs;
 
         } catch (error) {

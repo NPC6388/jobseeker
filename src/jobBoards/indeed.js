@@ -29,7 +29,6 @@ class IndeedScraper {
             };
 
             const searchUrl = `${this.baseUrl}/jobs?${new URLSearchParams(params)}`;
-            console.log(`🔍 Searching Indeed: ${searchUrl}`);
 
             const response = await axios.get(searchUrl, {
                 headers: this.headers,
@@ -65,7 +64,6 @@ class IndeedScraper {
                 }
             });
 
-            console.log(`✅ Found ${jobs.length} jobs on Indeed`);
             return jobs;
 
         } catch (error) {

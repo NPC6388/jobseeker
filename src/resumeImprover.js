@@ -45,7 +45,6 @@ class ResumeImprover {
     }
 
     async analyzeResume(resumeText, targetJobDescription = '') {
-        console.log('🔍 Analyzing resume for best practices compliance...');
 
         const analysis = {
             score: 0,
@@ -71,7 +70,6 @@ class ResumeImprover {
         // Calculate final score
         analysis.score = Math.max(0, Math.min(100, analysis.score));
 
-        console.log(`📊 Resume analysis complete. Score: ${analysis.score}/100`);
         return analysis;
     }
 
@@ -292,7 +290,6 @@ class ResumeImprover {
     }
 
     analyzeATSCompatibility(resumeText, analysis) {
-        console.log('🤖 Analyzing ATS compatibility...');
 
         // Check file format indicators
         if (resumeText.includes('\t\t') || resumeText.includes('     ')) {
@@ -319,7 +316,6 @@ class ResumeImprover {
     }
 
     analyzeProfessionalPresence(resumeText, analysis) {
-        console.log('👔 Analyzing professional presence...');
 
         // Check for LinkedIn profile
         const hasLinkedIn = /linkedin\.com|linked.?in/i.test(resumeText);
@@ -343,7 +339,6 @@ class ResumeImprover {
     }
 
     analyzeWritingQuality(resumeText, analysis) {
-        console.log('✍️ Analyzing writing quality and impact...');
 
         // Check for passive vs active voice
         const passiveIndicators = ['was responsible for', 'duties included', 'worked on', 'helped with'];
@@ -378,7 +373,6 @@ class ResumeImprover {
     }
 
     generateExtensiveRecommendations(analysis, targetJobDescription) {
-        console.log('📋 Generating comprehensive 2024-based recommendations...');
 
         // Priority-based recommendations from 2024 research
         const priorityRecommendations = [
@@ -475,7 +469,6 @@ class ResumeImprover {
     }
 
     async generateImprovedResume(originalResume, analysis, targetJob = null) {
-        console.log('🔄 Generating comprehensive improved resume based on 2024 research...');
 
         const improvements = {
             summary: '🎯 COMPREHENSIVE RESUME OPTIMIZATION REPORT - Based on 2024 ATS Research',

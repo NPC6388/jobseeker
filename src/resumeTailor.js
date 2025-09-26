@@ -24,7 +24,6 @@ class ResumeTailor {
             const resumeData = await this.parseDocxResume(this.resumePath);
             if (resumeData) {
                 this.baseResume = resumeData;
-                console.log('✅ Resume parsed successfully from DOCX file');
             } else {
                 console.warn('Could not parse DOCX, using default template');
                 this.baseResume = this.getDefaultResumeTemplate();
@@ -37,7 +36,6 @@ class ResumeTailor {
 
     async parseDocxResume(filePath) {
         try {
-            console.log(`📄 Parsing DOCX resume: ${filePath}`);
 
             // Extract text from DOCX
             const result = await mammoth.extractRawText({ path: filePath });
@@ -48,13 +46,6 @@ class ResumeTailor {
                 return null;
             }
 
-            console.log('📝 Raw text extracted, parsing content...');
-
-            // Debug: Show first 500 characters of extracted text
-            console.log('🔍 DEBUG - First 500 chars of extracted text:');
-            console.log('─'.repeat(50));
-            console.log(resumeText.substring(0, 500));
-            console.log('─'.repeat(50));
 
             // Parse the resume text to extract structured data
             const parsedData = this.parseResumeText(resumeText);
@@ -67,7 +58,6 @@ class ResumeTailor {
     }
 
     parseResumeText(text) {
-        console.log('🔍 Parsing resume text for all sections...');
 
         // Extract all sections from the resume
         const personalInfo = this.extractPersonalInfo(text);
@@ -108,7 +98,6 @@ class ResumeTailor {
             const phoneMatch = text.match(pattern);
             if (phoneMatch && phoneMatch[0]) {
                 personalInfo.phone = this.formatPhoneNumber(phoneMatch[0]);
-                console.log(`📞 Phone number found: ${personalInfo.phone}`);
                 break;
             }
         }
@@ -118,7 +107,6 @@ class ResumeTailor {
         const emailMatch = text.match(emailPattern);
         if (emailMatch && emailMatch[0]) {
             personalInfo.email = emailMatch[0];
-            console.log(`📧 Email found: ${personalInfo.email}`);
         }
 
         // Extract name (first line that looks like a name)
@@ -131,7 +119,6 @@ class ResumeTailor {
             // Look for name pattern (2-4 words, first letters capitalized)
             if (/^[A-Z][a-z]+\s+[A-Z][a-z]+(\s+[A-Z][a-z]+){0,2}$/.test(line)) {
                 personalInfo.name = line;
-                console.log(`👤 Name found: ${personalInfo.name}`);
                 break;
             }
         }
@@ -154,7 +141,6 @@ class ResumeTailor {
     }
 
     extractWorkExperience(text) {
-        console.log('🔍 Extracting work experience with custom parser...');
         const experience = [];
 
         // Find the Professional Experience section more precisely
@@ -166,7 +152,6 @@ class ResumeTailor {
         // Find the start of experience section
         while (i < lines.length) {
             if (lines[i].toLowerCase().includes('professional experience')) {
-                console.log(`🔍 Found Professional Experience section at line: "${lines[i]}"`);
                 inExperienceSection = true;
                 i++;
                 break;
@@ -175,7 +160,6 @@ class ResumeTailor {
         }
 
         if (!inExperienceSection) {
-            console.log('❌ Could not find Professional Experience section');
             return experience;
         }
 
@@ -189,17 +173,14 @@ class ResumeTailor {
 
             // Stop if we hit another major section (check for actual section headers)
             if (this.isActualSectionHeader(line, possibleSectionHeaders)) {
-                console.log(`🔍 Stopping at section: "${line}"`);
                 break;
             }
 
             // Look for company name with dates pattern (your resume format)
             if (this.isCompanyLine(line)) {
-                console.log(`🔍 Found company line: "${line}"`);
                 const job = this.parseMatthewJobEntry(lines, i);
                 if (job) {
                     experience.push(job);
-                    console.log(`✅ Parsed job: ${job.title} at ${job.company} (${job.duration})`);
 
                     // Skip ahead past this job entry to avoid re-processing the title/description lines
                     // Find the next company line or section end
@@ -221,7 +202,6 @@ class ResumeTailor {
             i++;
         }
 
-        console.log(`📊 Found ${experience.length} work experiences`);
         return experience;
     }
 
@@ -252,7 +232,6 @@ class ResumeTailor {
 
     parseMatthewJobEntry(lines, startIndex) {
         const companyLine = lines[startIndex];
-        console.log(`🔍 Parsing job entry starting at: "${companyLine}"`);
 
         // Parse company name and dates from the first line
         let company = '';
@@ -279,17 +258,14 @@ class ResumeTailor {
         company = company.replace(/,\s*[A-Z]{2,}$/, ''); // Remove ", CA" etc.
         company = company.replace(/,\s*PNW$/, ''); // Remove ", PNW" specific case
 
-        console.log(`🔍 Extracted company: "${company}", duration: "${duration}"`);
 
         // Look ahead for job title (next non-empty line that's not a bullet point)
         let titleIndex = startIndex + 1;
         while (titleIndex < lines.length) {
             const nextLine = lines[titleIndex].trim();
-            console.log(`🔍 Checking potential title line: "${nextLine}"`);
 
             // Stop if we hit another company line
             if (this.isCompanyLine(nextLine)) {
-                console.log(`🔍 Hit another company line, stopping title search`);
                 break;
             }
 
@@ -297,7 +273,6 @@ class ResumeTailor {
             if (nextLine.toLowerCase().includes('education') ||
                 nextLine.toLowerCase().includes('skills') ||
                 nextLine.toLowerCase().includes('certifications')) {
-                console.log(`🔍 Hit section header, stopping title search`);
                 break;
             }
 
@@ -309,21 +284,18 @@ class ResumeTailor {
 
             // Skip lines that start with bullet points or are clearly descriptions
             if (nextLine.startsWith('•') || nextLine.startsWith('-') || nextLine.startsWith('*')) {
-                console.log(`🔍 Skipping bullet point: "${nextLine}"`);
                 titleIndex++;
                 continue;
             }
 
             // Skip very long lines that are clearly descriptions
             if (nextLine.length > 80) {
-                console.log(`🔍 Skipping long description: "${nextLine.substring(0, 50)}..."`);
                 titleIndex++;
                 continue;
             }
 
             // This should be the job title
             title = nextLine;
-            console.log(`✅ Found job title: "${title}"`);
             break;
         }
 
@@ -362,7 +334,6 @@ class ResumeTailor {
             } else {
                 title = 'Professional';
             }
-            console.log(`🔍 Using default title for ${company}: "${title}"`);
         }
 
         const result = {
@@ -373,7 +344,6 @@ class ResumeTailor {
             achievements: achievements.length > 0 ? achievements : [`Worked as ${title} at ${company}`]
         };
 
-        console.log(`✅ Final parsed job: ${result.title} at ${result.company} (${result.duration})`);
         return result;
     }
 
@@ -484,7 +454,6 @@ class ResumeTailor {
     }
 
     extractEducation(text) {
-        console.log('🔍 Extracting education...');
         const education = [];
 
         const sections = text.split(/\n\s*\n/);
@@ -516,7 +485,6 @@ class ResumeTailor {
             }
         }
 
-        console.log(`🎓 Found ${education.length} education entries`);
         return education;
     }
 
@@ -554,12 +522,39 @@ class ResumeTailor {
     }
 
     parseEducationEntry(line) {
-        // Basic education parsing - can be enhanced based on your resume format
+        // Parse education line to extract degree, school, location, and year
+        const year = this.extractYear(line);
+
+        // Try to extract school name and location from common patterns
+        let school = '';
+        let location = '';
+        let degree = line;
+
+        // Pattern: "Degree, School Name, City, State"
+        if (line.includes(',')) {
+            const parts = line.split(',').map(part => part.trim());
+            if (parts.length >= 3) {
+                degree = parts[0];
+                school = parts[1];
+                location = parts.slice(2).join(', ');
+            }
+        }
+
+        // If we can't parse properly, use the default template data
+        if (!school && !location) {
+            return {
+                degree: 'High School Diploma',
+                school: 'St. Helens High School',
+                location: 'St. Helens, OR',
+                year: '2010'
+            };
+        }
+
         return {
-            degree: line,
-            school: 'Educational Institution',
-            location: 'Location',
-            year: this.extractYear(line) || 'Year'
+            degree: degree || line,
+            school: school || 'High School',
+            location: location || 'Oregon',
+            year: year || '2010'
         };
     }
 
@@ -569,7 +564,6 @@ class ResumeTailor {
     }
 
     extractSkills(text) {
-        console.log('🔍 Extracting skills from resume text...');
         const skills = new Set(); // Use Set to avoid duplicates
 
         // First try to find explicit skills section
@@ -581,7 +575,6 @@ class ResumeTailor {
 
             if (sectionLower.includes('skills') || sectionLower.includes('competencies') || sectionLower.includes('abilities')) {
                 foundExplicitSkills = true;
-                console.log('🔍 Found explicit skills section');
 
                 // Extract skills from this section
                 const lines = section.split('\n').map(line => line.trim()).filter(line => line.length > 0);
@@ -599,7 +592,6 @@ class ResumeTailor {
 
         // If no explicit skills section found, extract from summary and job descriptions
         if (!foundExplicitSkills) {
-            console.log('🔍 No explicit skills section found, extracting from content...');
 
             // Extract skills from your professional summary and job descriptions
             const skillKeywords = [
@@ -637,12 +629,10 @@ class ResumeTailor {
         }
 
         const skillsArray = Array.from(skills);
-        console.log(`💪 Found ${skillsArray.length} skills: ${skillsArray.slice(0, 5).join(', ')}...`);
         return skillsArray.slice(0, 25); // Return up to 25 skills
     }
 
     extractSummary(text) {
-        console.log('🔍 Extracting professional summary...');
 
         const sections = text.split(/\n\s*\n/);
 
@@ -655,7 +645,6 @@ class ResumeTailor {
                 // Find the actual summary text (skip headers)
                 for (const line of lines) {
                     if (!line.toLowerCase().includes('summary') && !line.toLowerCase().includes('profile') && line.length > 50) {
-                        console.log('📝 Found professional summary');
                         return line;
                     }
                 }
@@ -666,17 +655,14 @@ class ResumeTailor {
         for (let i = 1; i < sections.length; i++) {
             const section = sections[i];
             if (section.length > 100 && !section.toLowerCase().includes('experience') && !section.toLowerCase().includes('education')) {
-                console.log('📝 Using first substantial paragraph as summary');
                 return section.replace(/\n/g, ' ').trim();
             }
         }
 
-        console.log('📝 No summary found, using default');
         return null;
     }
 
     extractCertifications(text) {
-        console.log('🏆 Extracting certifications from resume text...');
 
         const certifications = [];
         const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
@@ -695,7 +681,6 @@ class ResumeTailor {
                     continue;
                 }
                 inCertificationSection = true;
-                console.log(`📋 Found certification section: ${line}`);
                 continue;
             }
 
@@ -703,7 +688,6 @@ class ResumeTailor {
             if (inCertificationSection) {
                 // Stop if we hit another major section
                 if (this.isActualSectionHeader(line, ['education', 'skills', 'experience', 'achievements', 'awards'])) {
-                    console.log(`🔚 End of certification section at: ${line}`);
                     break;
                 }
 
@@ -713,7 +697,6 @@ class ResumeTailor {
                     if ((lineLower.includes('pmi') && (lineLower.includes('member') || lineLower.includes('membership'))) ||
                         (lineLower.includes('iatse')) ||
                         (lineLower.includes('union') && lineLower.includes('member'))) {
-                        console.log(`⚠️ Skipping professional/union membership (not certification): ${line}`);
                         continue;
                     }
 
@@ -721,7 +704,6 @@ class ResumeTailor {
                     if (lineLower.includes('high school diploma') ||
                         lineLower.includes('diploma') ||
                         lineLower.includes('degree')) {
-                        console.log(`⚠️ Skipping educational credential (belongs in education): ${line}`);
                         continue;
                     }
 
@@ -733,18 +715,15 @@ class ResumeTailor {
                     ];
 
                     if (fakeCertifications.some(fake => line.includes(fake))) {
-                        console.log(`❌ Skipping fake certification: ${line}`);
                         continue;
                     }
 
                     // Add legitimate certifications
                     certifications.push(line);
-                    console.log(`✅ Found certification: ${line}`);
                 }
             }
         }
 
-        console.log(`🏆 Extracted ${certifications.length} legitimate certifications`);
         return certifications;
     }
 
@@ -759,7 +738,7 @@ class ResumeTailor {
             },
 
             // Professional Summary (ATS-optimized)
-            professionalSummary: 'Dedicated customer service professional with 5+ years of experience in client relations, data management, and administrative support. Proven track record of maintaining 95%+ customer satisfaction ratings while managing high-volume workloads. Skilled in Microsoft Office Suite, CRM systems, and multi-channel communication platforms.',
+            professionalSummary: 'Dedicated professional with experience in client relations, data management, and administrative support. Strong background in project management, team coordination, and process improvement. Skilled in Microsoft Office Suite, database systems, and multi-channel communication platforms.',
 
             // Core Competencies (ATS keyword-rich)
             coreCompetencies: [
@@ -825,10 +804,9 @@ class ResumeTailor {
             education: [
                 {
                     degree: 'High School Diploma',
-                    school: 'Seattle High School',
-                    location: 'Seattle, WA',
-                    year: '2017',
-                    relevant: 'Relevant Coursework: Business Communications, Computer Applications, Office Administration'
+                    school: 'St. Helens High School',
+                    location: 'St. Helens, OR',
+                    year: '2010'
                 }
             ],
 
@@ -885,37 +863,27 @@ class ResumeTailor {
             tailoredResume.certifications = this.selectRelevantCertifications(job);
 
             // Generate resume text for comprehensive analysis
-            const resumeText = this.generateResumeText(tailoredResume);
+            const resumeText = this.generateResumeText(tailoredResume, job);
             const jobDescription = `${job.title} ${job.company} ${job.description} ${job.requirements || ''}`.trim();
 
             // Perform comprehensive best practices analysis
-            console.log('🔍 Running comprehensive resume analysis for job-specific optimization...');
             const comprehensiveAnalysis = await this.resumeImprover.analyzeResume(resumeText, jobDescription);
 
             // Apply best practices improvements to the tailored resume
             const optimizedResume = await this.applyBestPracticesImprovements(tailoredResume, comprehensiveAnalysis, job);
 
             // Generate final optimized resume text
-            const optimizedResumeText = this.generateResumeText(optimizedResume);
+            const optimizedResumeText = this.generateResumeText(optimizedResume, job);
             const finalAnalysis = await this.resumeImprover.analyzeResume(optimizedResumeText, jobDescription);
 
             return {
-                tailoredResume: optimizedResume,
-                tailoringNotes: this.generateEnhancedTailoringNotes(job, jobKeywords, comprehensiveAnalysis),
-                atsScore: finalAnalysis.score,
-                keywordMatches: this.getKeywordMatches(optimizedResume, jobKeywords),
-                bestPracticesAnalysis: comprehensiveAnalysis,
-                finalOptimizationScore: finalAnalysis.score,
-                improvementSuggestions: finalAnalysis.recommendations.slice(0, 10) // Top 10 recommendations
+                tailoredResume: optimizedResume
             };
 
         } catch (error) {
             console.error('Error tailoring resume:', error);
             return {
-                tailoredResume: this.baseResume,
-                tailoringNotes: ['Used base resume due to tailoring error'],
-                atsScore: 0,
-                keywordMatches: []
+                tailoredResume: this.baseResume
             };
         }
     }
@@ -958,7 +926,7 @@ class ResumeTailor {
         const company = job.company;
 
         // Create job-specific summary with exact job title
-        let summary = `Experienced ${jobTitle.toLowerCase()} professional with 5+ years in `;
+        let summary = `Experienced ${jobTitle.toLowerCase()} professional with background in `;
 
         // Add relevant experience areas based on keywords
         const experienceAreas = [];
@@ -981,8 +949,8 @@ class ResumeTailor {
 
         summary += experienceAreas.join(', ') + '. ';
 
-        // Add specific achievements with numbers
-        summary += 'Proven track record of maintaining 95%+ customer satisfaction ratings while managing high-volume workloads. ';
+        // Add relevant professional strengths based on actual experience
+        summary += 'Experienced in process improvement, team coordination, and achieving operational efficiency. ';
 
         // Add relevant technical skills
         const techSkills = [];
@@ -1119,7 +1087,6 @@ class ResumeTailor {
     }
 
     tailorExperience(job, baseExperience, jobKeywords) {
-        console.log(`🎯 Tailoring experience for ${job.title} at ${job.company}`);
 
         // Score each job based on relevance to target position
         const scoredExperience = baseExperience.map(exp => ({
@@ -1133,10 +1100,6 @@ class ResumeTailor {
         // Take top 3-4 most relevant experiences
         const relevantExperience = scoredExperience.slice(0, 4);
 
-        console.log(`📊 Selected ${relevantExperience.length} most relevant experiences:`);
-        relevantExperience.forEach((exp, i) => {
-            console.log(`  ${i + 1}. ${exp.title} at ${exp.company} (Score: ${exp.relevanceScore})`);
-        });
 
         // Enhance the selected experiences with tailored descriptions
         return relevantExperience.map(exp => {
@@ -1161,32 +1124,26 @@ class ResumeTailor {
         const expText = `${experience.title} ${experience.company} ${experience.achievements?.join(' ') || ''}`.toLowerCase();
         const targetText = `${targetJob.title} ${targetJob.summary || ''}`.toLowerCase();
 
-        console.log(`🔍 Scoring relevance: "${experience.title}" for "${targetJob.title}"`);
 
         // Determine job categories for better matching
         const targetCategory = this.categorizeJob(targetJob.title, targetJob.summary);
         const experienceCategory = this.categorizeJob(experience.title, experience.company);
 
-        console.log(`📋 Target category: ${targetCategory}, Experience category: ${experienceCategory}`);
 
         // Category matching (primary scoring factor)
         if (targetCategory === experienceCategory) {
             score += 80; // High bonus for same category
-            console.log(`✅ Category match: +80 points`);
         } else if (this.areRelatedCategories(targetCategory, experienceCategory)) {
             score += 40; // Medium bonus for related categories
-            console.log(`✅ Related categories: +40 points`);
         } else {
             // Penalty for unrelated categories
             score -= 20;
-            console.log(`❌ Unrelated categories: -20 points`);
         }
 
         // Direct title keyword matching (secondary factor)
         const titleMatches = this.countTitleKeywordMatches(experience.title, targetJob.title);
         score += titleMatches * 15;
         if (titleMatches > 0) {
-            console.log(`🎯 Title keyword matches: ${titleMatches} (+${titleMatches * 15} points)`);
         }
 
         // Transferable skills bonus (for different categories)
@@ -1194,14 +1151,12 @@ class ResumeTailor {
             const transferablePoints = this.getTransferableSkillsScore(experience, targetJob);
             score += transferablePoints;
             if (transferablePoints > 0) {
-                console.log(`🔄 Transferable skills: +${transferablePoints} points`);
             }
         }
 
         // Industry/company type matching
         if (this.hasSimilarIndustry(experience.company, targetJob.company)) {
             score += 20;
-            console.log(`🏢 Industry match: +20 points`);
         }
 
         // Keyword matching from job description (lower weight)
@@ -1213,25 +1168,20 @@ class ResumeTailor {
             }
         });
         if (keywordMatches > 0) {
-            console.log(`🔍 Keyword matches: ${keywordMatches} (+${keywordMatches * 5} points)`);
         }
 
         // Recency bonus (but lower weight than relevance)
         if (experience.duration && experience.duration.toLowerCase().includes('present')) {
             score += 10;
-            console.log(`📅 Current job: +10 points`);
         } else if (experience.duration && /202[0-9]/.test(experience.duration)) {
             score += 8;
-            console.log(`📅 Recent (2020s): +8 points`);
         } else if (experience.duration && /201[5-9]/.test(experience.duration)) {
             score += 5;
-            console.log(`📅 Somewhat recent (2015-2019): +5 points`);
         }
 
         // Ensure minimum score of 0
         score = Math.max(0, score);
 
-        console.log(`📊 Final score for "${experience.title}": ${score}`);
         return score;
     }
 
@@ -1470,7 +1420,7 @@ class ResumeTailor {
         return notes;
     }
 
-    async generateResumeText(tailoredResumeData) {
+    generateResumeText(tailoredResumeData, targetJob = null) {
         const resume = tailoredResumeData.tailoredResume || tailoredResumeData;
 
         // Ensure resume has required fields with defaults
@@ -1494,68 +1444,38 @@ class ResumeTailor {
         const summary = resume.professionalSummary || 'Dedicated professional seeking opportunities in customer service and administrative roles.';
         resumeText += `${summary}\n\n`;
 
-        // Core Competencies (optimized for ATS scanning)
-        resumeText += `CORE COMPETENCIES\n`;
-        // Format as bullet points for ATS readability
-        const competencies = resume.coreCompetencies || resume.skills || [];
-        competencies.forEach(competency => {
-            resumeText += `• ${competency}\n`;
-        });
-        resumeText += '\n';
+        // Determine optimal section order based on job type
+        const sectionOrder = this.determineSectionOrder(targetJob, resume);
 
-        // Professional Experience (with achievements focus)
-        resumeText += `PROFESSIONAL EXPERIENCE\n`;
-        const experience = resume.experience || [];
-        experience.forEach(exp => {
-            resumeText += `${exp.title || 'Position'}\n`;
-            resumeText += `${exp.company || 'Company'} | ${exp.location || 'Location'} | ${exp.duration || 'Duration'}\n`;
-
-            // Use achievements instead of responsibilities for better impact
-            const items = exp.achievements || exp.responsibilities || [];
-            items.forEach(item => {
-                resumeText += `• ${item}\n`;
-            });
-            resumeText += '\n';
-        });
-
-        // Education & Credentials (Combined Section)
-        resumeText += `\nEDUCATION & CREDENTIALS\n`;
-        resumeText += `${'='.repeat(25)}\n`;
-
-        // Add education first
-        const education = resume.education || [];
-        education.forEach(edu => {
-            resumeText += `${edu.degree || 'Degree'}\n`;
-            resumeText += `${edu.school || 'School'} | ${edu.location || 'Location'} | ${edu.year || 'Year'}\n`;
-            if (edu.relevant) {
-                resumeText += `${edu.relevant}\n`;
+        // Generate sections in optimal order
+        sectionOrder.forEach(sectionType => {
+            switch (sectionType) {
+                case 'competencies':
+                    resumeText += this.generateCompetenciesSection(resume, targetJob);
+                    break;
+                case 'experience':
+                    resumeText += this.generateExperienceSection(resume, targetJob);
+                    break;
+                case 'education':
+                    resumeText += this.generateEducationSection(resume);
+                    break;
+                case 'certifications':
+                    resumeText += this.generateCertificationsSection(resume);
+                    break;
+                case 'achievements':
+                    resumeText += this.generateAchievementsSection(resume);
+                    break;
             }
-            resumeText += '\n';
         });
 
-        // Add certifications in the same section
-        if (resume.certifications && resume.certifications.length > 0) {
-            resume.certifications.forEach(cert => {
-                resumeText += `${cert}\n\n`;
-            });
-        }
-
-        // Add ATS optimization note
-        if (tailoredResumeData.atsScore !== undefined) {
-            resumeText += `\n--- TAILORING SUMMARY ---\n`;
-            resumeText += `ATS Compatibility Score: ${tailoredResumeData.atsScore}%\n`;
-            if (tailoredResumeData.keywordMatches) {
-                const matchedKeywords = tailoredResumeData.keywordMatches.filter(m => m.matched);
-                resumeText += `Keywords Matched: ${matchedKeywords.length}/${tailoredResumeData.keywordMatches.length}\n`;
-            }
-        }
+        // No AI or tailoring evidence in final resume
 
         return resumeText;
     }
 
     async saveResumeForJob(tailoredResume, job) {
         try {
-            const resumeText = await this.generateResumeText(tailoredResume);
+            const resumeText = this.generateResumeText(tailoredResume, job);
             const safeCompany = (job.company || 'Unknown_Company').toString();
             const safeTitle = (job.title || 'Unknown_Position').toString();
             const filename = `resume_${safeCompany}_${safeTitle}`.replace(/[^a-zA-Z0-9]/g, '_') + '.txt';
@@ -1576,7 +1496,6 @@ class ResumeTailor {
     }
 
     async applyBestPracticesImprovements(resume, analysis, job) {
-        console.log('🎯 Applying best practices improvements to tailored resume...');
 
         const improvedResume = JSON.parse(JSON.stringify(resume)); // Deep clone
 
@@ -1609,7 +1528,6 @@ class ResumeTailor {
                 .filter(rec => rec.includes('ATS') || rec.includes('FORMAT') || rec.includes('CRITICAL'))
                 .slice(0, 5);
 
-            console.log('✅ Best practices improvements applied successfully');
             return improvedResume;
 
         } catch (error) {
@@ -1622,13 +1540,16 @@ class ResumeTailor {
         if (!summary || missingKeywords.length === 0) return summary;
 
         // Strategically incorporate 2-3 missing keywords into the summary
+        const validProfessionalKeywords = ['customer service', 'data entry', 'administrative', 'microsoft office', 'excel', 'communication', 'organization', 'detail-oriented', 'team collaboration', 'problem solving', 'multitasking', 'time management', 'computer skills', 'database management'];
+
         const relevantKeywords = missingKeywords
             .filter(keyword => keyword.length > 3)
+            .filter(keyword => validProfessionalKeywords.some(valid => keyword.toLowerCase().includes(valid.toLowerCase()) || valid.toLowerCase().includes(keyword.toLowerCase())))
             .slice(0, 3);
 
         let enhancedSummary = summary;
 
-        // Add keywords naturally at the end
+        // Add keywords naturally at the end only if we have valid professional keywords
         if (relevantKeywords.length > 0) {
             const keywordPhrase = `with expertise in ${relevantKeywords.join(', ')}`;
             if (!enhancedSummary.toLowerCase().includes('expertise in')) {
@@ -1706,29 +1627,312 @@ class ResumeTailor {
     generateEnhancedTailoringNotes(job, jobKeywords, analysis) {
         const baseNotes = this.generateTailoringNotes(job, jobKeywords);
 
+        // Keep tailoring notes clean and natural
+        const jobTitle = job.title || 'the position';
+        const jobCompany = job.company || 'this company';
+
         const enhancedNotes = [
-            ...baseNotes,
+            `Resume tailored for ${jobTitle} position at ${jobCompany}.`,
             '',
-            '🎯 COMPREHENSIVE OPTIMIZATION APPLIED:',
-            `✅ ATS Compatibility Score: ${Math.round(analysis.score)}/100`,
-            `📊 Keyword Match Analysis: ${analysis.keywordAnalysis?.matchPercentage || 0}% match`,
-            `🚀 Best Practices Applied: ${analysis.recommendations.length} recommendations`,
-            '',
-            '🔥 KEY IMPROVEMENTS MADE:',
-            '• Applied 2025 ATS optimization standards',
-            '• Enhanced professional summary with job-specific keywords',
-            '• Strengthened experience descriptions with action verbs',
-            '• Optimized core competencies for job relevance',
-            '• Implemented quantified achievement framework',
-            '',
-            '💡 NEXT LEVEL OPTIMIZATION:',
-            '• Resume formatted for maximum ATS compatibility',
-            '• Content optimized using latest industry research',
-            '• Keywords strategically placed throughout sections',
-            '• Professional branding aligned with target role'
+            'Key Adjustments Made:',
+            '• Emphasized relevant experience and skills',
+            '• Highlighted qualifications matching job requirements',
+            '• Focused on achievements most applicable to this role',
+            '• Organized sections to prioritize relevant content',
+            ''
         ];
 
         return enhancedNotes;
+    }
+
+    determineSectionOrder(targetJob, resume) {
+        // Default order for most positions
+        let defaultOrder = ['competencies', 'experience', 'education', 'certifications'];
+
+        if (!targetJob) return defaultOrder;
+
+        const jobTitle = targetJob.title?.toLowerCase() || '';
+        const jobSummary = targetJob.summary?.toLowerCase() || '';
+        const jobText = `${jobTitle} ${jobSummary}`;
+
+        // For entry-level or skill-focused positions, emphasize competencies
+        if (jobText.includes('entry level') || jobText.includes('no experience') ||
+            jobText.includes('data entry') || jobText.includes('administrative')) {
+            return ['competencies', 'education', 'experience', 'certifications'];
+        }
+
+        // For management or leadership roles, emphasize experience
+        if (jobText.includes('manager') || jobText.includes('lead') ||
+            jobText.includes('supervisor') || jobText.includes('director')) {
+            return ['experience', 'competencies', 'certifications', 'education'];
+        }
+
+        // For technical roles with certification requirements
+        if (jobText.includes('certified') || jobText.includes('license') ||
+            jobText.includes('pmp') || jobText.includes('scrum')) {
+            return ['competencies', 'certifications', 'experience', 'education'];
+        }
+
+        // For recent graduates or education-focused roles
+        if (jobText.includes('graduate') || jobText.includes('degree required') ||
+            jobText.includes('education') || jobText.includes('teaching')) {
+            return ['education', 'competencies', 'experience', 'certifications'];
+        }
+
+        return defaultOrder;
+    }
+
+    generateCompetenciesSection(resume, targetJob = null) {
+        let section = `CORE COMPETENCIES\n`;
+        let competencies = resume.coreCompetencies || resume.skills || [];
+
+        // If we have job context, intelligently rewrite competencies to match
+        if (targetJob) {
+            competencies = this.transformCompetenciesForJob(competencies, targetJob);
+        }
+
+        competencies.forEach(competency => {
+            section += `• ${competency}\n`;
+        });
+        section += '\n';
+        return section;
+    }
+
+    generateExperienceSection(resume, targetJob = null) {
+        let section = `PROFESSIONAL EXPERIENCE\n`;
+        let experience = resume.experience || [];
+
+        // Transform experience descriptions for the target job
+        if (targetJob) {
+            experience = this.transformExperienceForJob(experience, targetJob);
+        }
+
+        experience.forEach(exp => {
+            section += `${exp.title || 'Position'}\n`;
+            section += `${exp.company || 'Company'} | ${exp.location || 'Location'} | ${exp.duration || 'Duration'}\n`;
+
+            // Use achievements instead of responsibilities for better impact
+            const items = exp.achievements || exp.responsibilities || [];
+            items.forEach(item => {
+                section += `• ${item}\n`;
+            });
+            section += '\n';
+        });
+        return section;
+    }
+
+    generateEducationSection(resume) {
+        let section = `\nEDUCATION & CREDENTIALS\n`;
+        section += `${'='.repeat(25)}\n`;
+
+        // Add education
+        const education = resume.education || [];
+        education.forEach(edu => {
+            section += `${edu.degree || 'High School Diploma'}\n`;
+            section += `${edu.school || 'St. Helens High School'} | ${edu.location || 'St. Helens, OR'} | ${edu.year || '2010'}\n`;
+            if (edu.relevant) {
+                section += `${edu.relevant}\n`;
+            }
+            section += '\n';
+        });
+
+        // Add certifications to the same section
+        if (resume.certifications && resume.certifications.length > 0) {
+            const validCertifications = resume.certifications.filter(cert => {
+                const certLower = cert.toLowerCase();
+                // Filter out redundant PMI memberships since we have the full chapter names
+                return !(certLower.includes('pmi-portland member') ||
+                        certLower.includes('pmi-la member') ||
+                        certLower.includes('iatse') && certLower.includes('member'));
+            });
+
+            validCertifications.forEach(cert => {
+                section += `${cert}\n\n`;
+            });
+        }
+
+        return section;
+    }
+
+    generateCertificationsSection(resume) {
+        // Certifications are now included in the Education section
+        return '';
+    }
+
+    generateAchievementsSection(resume) {
+        // This would be for a separate achievements section if needed
+        // For now, achievements are included in experience
+        return '';
+    }
+
+    transformCompetenciesForJob(competencies, targetJob) {
+        const jobTitle = (targetJob.title || '').toLowerCase();
+        const jobDesc = (targetJob.description || '').toLowerCase();
+        const jobReqs = (targetJob.requirements || '').toLowerCase();
+        const fullJobText = `${jobTitle} ${jobDesc} ${jobReqs}`;
+
+        // Define competency transformations based on job type
+        const transformationMap = {
+            // Customer Service roles
+            'customer service': {
+                'project management': 'Customer Relationship Management',
+                'leadership': 'Team Leadership & Customer Advocacy',
+                'problem solving': 'Customer Problem Resolution',
+                'communication': 'Exceptional Customer Communication',
+                'data analysis': 'Customer Data Analysis & Insights',
+                'database management': 'Customer Database Management',
+                'process improvement': 'Customer Experience Optimization'
+            },
+            // Administrative roles
+            'administrative': {
+                'project management': 'Office Administration & Project Coordination',
+                'leadership': 'Administrative Team Leadership',
+                'problem solving': 'Administrative Problem Resolution',
+                'communication': 'Professional Administrative Communication',
+                'data analysis': 'Administrative Data Management',
+                'database management': 'Records & Database Administration',
+                'process improvement': 'Administrative Process Optimization'
+            },
+            // Data Entry roles
+            'data entry': {
+                'project management': 'Data Project Management',
+                'leadership': 'Data Quality Leadership',
+                'problem solving': 'Data Accuracy & Quality Control',
+                'communication': 'Data Documentation & Reporting',
+                'data analysis': 'Data Entry & Analysis',
+                'database management': 'Database Data Entry & Management',
+                'process improvement': 'Data Entry Process Improvement'
+            },
+            // Office roles
+            'office': {
+                'project management': 'Office Project Coordination',
+                'leadership': 'Office Team Leadership',
+                'problem solving': 'Office Operations Problem Solving',
+                'communication': 'Professional Office Communication',
+                'data analysis': 'Office Data & Reporting',
+                'database management': 'Office Database Management',
+                'process improvement': 'Office Efficiency Optimization'
+            },
+            // Retail roles
+            'retail': {
+                'project management': 'Retail Operations Management',
+                'leadership': 'Sales Team Leadership',
+                'problem solving': 'Customer Service Problem Resolution',
+                'communication': 'Customer Sales Communication',
+                'data analysis': 'Sales Data Analysis',
+                'database management': 'Customer Database Management',
+                'process improvement': 'Sales Process Improvement'
+            }
+        };
+
+        // Find the best matching job category
+        let activeTransforms = {};
+        for (const [jobType, transforms] of Object.entries(transformationMap)) {
+            if (fullJobText.includes(jobType)) {
+                activeTransforms = { ...activeTransforms, ...transforms };
+            }
+        }
+
+        // Transform competencies
+        return competencies.map(comp => {
+            const compLower = comp.toLowerCase();
+
+            // Check for exact matches first
+            for (const [key, value] of Object.entries(activeTransforms)) {
+                if (compLower.includes(key)) {
+                    return value;
+                }
+            }
+
+            // Add job-specific qualifiers to generic skills
+            if (fullJobText.includes('customer service') || fullJobText.includes('customer')) {
+                if (compLower.includes('communication')) return 'Customer Communication Excellence';
+                if (compLower.includes('problem')) return 'Customer Problem Resolution';
+                if (compLower.includes('attention')) return 'Customer Detail Attention';
+            }
+
+            if (fullJobText.includes('data') || fullJobText.includes('administrative')) {
+                if (compLower.includes('accuracy')) return 'Data Accuracy & Quality Control';
+                if (compLower.includes('organization')) return 'Administrative Organization';
+                if (compLower.includes('efficiency')) return 'Administrative Efficiency';
+            }
+
+            // Return original if no transformation applies
+            return comp;
+        });
+    }
+
+    transformExperienceForJob(experiences, targetJob) {
+        const jobTitle = (targetJob.title || '').toLowerCase();
+        const jobDesc = (targetJob.description || '').toLowerCase();
+        const jobReqs = (targetJob.requirements || '').toLowerCase();
+        const fullJobText = `${jobTitle} ${jobDesc} ${jobReqs}`;
+
+        return experiences.map(exp => {
+            // Create a copy to avoid mutating original
+            const transformedExp = JSON.parse(JSON.stringify(exp));
+
+            // Transform responsibilities/achievements based on job requirements
+            if (transformedExp.responsibilities) {
+                transformedExp.responsibilities = transformedExp.responsibilities.map(resp => {
+                    return this.transformResponsibilityForJob(resp, fullJobText);
+                });
+            }
+
+            if (transformedExp.achievements) {
+                transformedExp.achievements = transformedExp.achievements.map(achievement => {
+                    return this.transformResponsibilityForJob(achievement, fullJobText);
+                });
+            }
+
+            return transformedExp;
+        });
+    }
+
+    transformResponsibilityForJob(responsibility, fullJobText) {
+        const respLower = responsibility.toLowerCase();
+
+        // Customer service transformations
+        if (fullJobText.includes('customer service') || fullJobText.includes('customer')) {
+            if (respLower.includes('managed') && respLower.includes('project')) {
+                return responsibility.replace(/managed.*project/i, 'Managed customer experience improvement projects');
+            }
+            if (respLower.includes('led') && respLower.includes('team')) {
+                return responsibility.replace(/led.*team/i, 'Led customer service team initiatives');
+            }
+            if (respLower.includes('database') || respLower.includes('data')) {
+                return responsibility.replace(/database|data/gi, 'customer data');
+            }
+            if (respLower.includes('process') && respLower.includes('improve')) {
+                return responsibility.replace(/process.*improve/i, 'customer service process improvements');
+            }
+        }
+
+        // Administrative transformations
+        if (fullJobText.includes('administrative') || fullJobText.includes('office')) {
+            if (respLower.includes('managed') && respLower.includes('project')) {
+                return responsibility.replace(/managed.*project/i, 'Managed administrative coordination projects');
+            }
+            if (respLower.includes('led') && respLower.includes('team')) {
+                return responsibility.replace(/led.*team/i, 'Led administrative team operations');
+            }
+            if (respLower.includes('database') || respLower.includes('data')) {
+                return responsibility.replace(/database|data/gi, 'administrative records and data');
+            }
+        }
+
+        // Data entry transformations
+        if (fullJobText.includes('data entry') || fullJobText.includes('data')) {
+            if (respLower.includes('managed') && respLower.includes('database')) {
+                return responsibility.replace(/managed.*database/i, 'Managed data entry database operations');
+            }
+            if (respLower.includes('accuracy') || respLower.includes('quality')) {
+                return responsibility + ' with focus on data accuracy';
+            }
+        }
+
+        // Return original if no specific transformation applies
+        return responsibility;
     }
 }
 

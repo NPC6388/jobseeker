@@ -25,7 +25,6 @@ class LinkedInScraper {
 
             const searchUrl = `${this.baseUrl}/jobs/search/?keywords=${encodeURIComponent(keywords)}&location=${encodeURIComponent(location)}&f_JT=P&f_WT=1`; // P = Part-time, WT=1 = Remote/Hybrid
 
-            console.log(`🔍 Searching LinkedIn: ${searchUrl}`);
             await this.page.goto(searchUrl, { waitUntil: 'networkidle' });
 
             // Wait for job listings to load
@@ -56,7 +55,6 @@ class LinkedInScraper {
                 return jobs;
             });
 
-            console.log(`✅ Found ${jobs.length} jobs on LinkedIn`);
             return jobs;
 
         } catch (error) {

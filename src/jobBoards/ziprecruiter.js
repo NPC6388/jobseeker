@@ -19,7 +19,6 @@ class ZipRecruiterScraper {
             };
 
             const searchUrl = `${this.baseUrl}/jobs-search?${new URLSearchParams(params)}`;
-            console.log(`🔍 Searching ZipRecruiter: ${searchUrl}`);
 
             const response = await axios.get(searchUrl, { headers: this.headers });
             const $ = cheerio.load(response.data);
@@ -53,7 +52,6 @@ class ZipRecruiterScraper {
                 }
             });
 
-            console.log(`✅ Found ${jobs.length} jobs on ZipRecruiter`);
             return jobs;
 
         } catch (error) {

@@ -19,7 +19,7 @@ class ApplicationManager {
     async initialize() {
         if (!this.browser) {
             this.browser = await chromium.launch({
-                headless: false, // Set to true for production
+                headless: true, // Set to true for production
             });
             this.page = await this.browser.newPage();
             await this.page.setExtraHTTPHeaders({
@@ -29,7 +29,6 @@ class ApplicationManager {
 
         // Load comprehensive application data if not already loaded
         if (!this.applicationData) {
-            console.log('📄 Loading comprehensive application data...');
             this.applicationData = await this.dataExtractor.extractComprehensiveData();
         }
     }
@@ -57,14 +56,12 @@ class ApplicationManager {
 
     async applyToIndeedJob(job) {
         try {
-            console.log(`   🔗 Opening Indeed job: ${job.jobUrl}`);
             await this.page.goto(job.jobUrl, { waitUntil: 'networkidle2' });
 
             // Check if "Apply Now" button exists
             const applyButton = await this.page.locator('.jobsearch-IndeedApplyButton-link, .indeed-apply-button').first();
 
             if (!(await applyButton.isVisible().catch(() => false))) {
-                console.log('   ℹ️  No direct apply button found - external application required');
                 return false;
             }
 
@@ -111,7 +108,6 @@ class ApplicationManager {
                 }
             }
 
-            console.log('   ℹ️  Application form filled but not submitted (AUTO_SUBMIT=false)');
             return true;
 
         } catch (error) {
@@ -122,7 +118,6 @@ class ApplicationManager {
 
     async applyToLinkedInJob(job) {
         try {
-            console.log('   ℹ️  LinkedIn applications require manual login - skipping automatic application');
             return false;
         } catch (error) {
             console.error('   ❌ LinkedIn application error:', error.message);
@@ -132,19 +127,16 @@ class ApplicationManager {
 
     async applyToCraigslistJob(job) {
         try {
-            console.log(`   🔗 Opening Craigslist job: ${job.jobUrl}`);
             await this.page.goto(job.jobUrl, { waitUntil: 'networkidle' });
 
             // Look for contact email or reply button
             const replyButton = await this.page.locator('a[href*="mailto"], .reply-link').first();
 
             if (await replyButton.isVisible().catch(() => false)) {
-                console.log('   📧 Craigslist job requires email response - opening email client');
                 await replyButton.click();
                 await this.page.waitForTimeout(2000);
                 return true;
             } else {
-                console.log('   ℹ️  No reply option found for this Craigslist job');
                 return false;
             }
 
@@ -156,7 +148,6 @@ class ApplicationManager {
 
     async applyToZipRecruiterJob(job) {
         try {
-            console.log(`   🔗 Opening ZipRecruiter job: ${job.jobUrl}`);
             await this.page.goto(job.jobUrl, { waitUntil: 'networkidle' });
 
             // Look for apply button
@@ -169,7 +160,6 @@ class ApplicationManager {
                 // Try to fill the application form
                 return await this.fillGenericApplicationForm();
             } else {
-                console.log('   ℹ️  No apply button found for this ZipRecruiter job');
                 return false;
             }
 
@@ -192,7 +182,6 @@ class ApplicationManager {
             // Fill cover letter
             await this.fillCoverLetterIfExists();
 
-            console.log('   ✅ Generic form filled successfully');
             return true;
 
         } catch (error) {
@@ -218,17 +207,14 @@ class ApplicationManager {
         try {
             const resumePath = process.env.RESUME_PATH;
             if (!resumePath || !await fs.pathExists(resumePath)) {
-                console.log('   ⚠️  Resume file not found - skipping upload');
                 return;
             }
 
             const fileInput = this.page.locator('input[type="file"]').first();
             if (await fileInput.isVisible().catch(() => false)) {
                 await fileInput.setInputFiles(path.resolve(resumePath));
-                console.log('   📎 Resume uploaded successfully');
             }
         } catch (error) {
-            console.log('   ⚠️  Could not upload resume:', error.message);
         }
     }
 
@@ -245,10 +231,8 @@ class ApplicationManager {
             if (await textArea.isVisible().catch(() => false)) {
                 await textArea.click();
                 await textArea.fill(coverLetter);
-                console.log('   📝 Cover letter added successfully');
             }
         } catch (error) {
-            console.log('   ⚠️  Could not add cover letter:', error.message);
         }
     }
 
@@ -280,7 +264,6 @@ class ApplicationManager {
             await this.safelyFillField(page, selectors.state, data.address.state);
             await this.safelyFillField(page, selectors.zipCode, data.address.zipCode);
 
-            console.log('✅ Personal information auto-filled');
         } catch (error) {
             console.error('❌ Error filling personal info:', error.message);
         }
@@ -309,7 +292,6 @@ class ApplicationManager {
                 await this.safelyFillField(page, selectors.salary, recentJob.salary);
                 await this.safelyFillField(page, selectors.supervisor, recentJob.supervisor.name);
 
-                console.log('✅ Work history auto-filled');
             }
         } catch (error) {
             console.error('❌ Error filling work history:', error.message);
@@ -333,7 +315,6 @@ class ApplicationManager {
                 await this.safelyFillField(page, selectors.degree, recentEducation.degree);
                 await this.safelyFillField(page, selectors.graduationDate, recentEducation.graduationDate);
 
-                console.log('✅ Education information auto-filled');
             }
         } catch (error) {
             console.error('❌ Error filling education:', error.message);
@@ -356,7 +337,6 @@ class ApplicationManager {
             await this.safelySelectOption(page, selectors.sponsorship, auth.needSponsorship ? 'yes' : 'no');
             await this.safelyFillField(page, selectors.citizenship, auth.citizenship);
 
-            console.log('✅ Work authorization auto-filled');
         } catch (error) {
             console.error('❌ Error filling work authorization:', error.message);
         }
@@ -375,7 +355,6 @@ class ApplicationManager {
             await this.safelyFillField(page, selectors.startDate, prefs.startDate);
             await this.safelyFillField(page, selectors.salary, prefs.desiredSalary);
 
-            console.log('✅ Availability information auto-filled');
         } catch (error) {
             console.error('❌ Error filling availability:', error.message);
         }
@@ -430,7 +409,6 @@ class ApplicationManager {
 
     // Auto-fill comprehensive application data
     async autoFillApplication(page, job) {
-        console.log('🤖 Auto-filling application with comprehensive data...');
 
         try {
             // Get job-specific data
@@ -455,7 +433,6 @@ class ApplicationManager {
             // Upload resume if found
             await this.uploadResumeToPage(page);
 
-            console.log('✅ Application auto-filled successfully');
             return true;
 
         } catch (error) {

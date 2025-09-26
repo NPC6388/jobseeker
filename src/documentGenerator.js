@@ -19,8 +19,6 @@ class DocumentGenerator {
         let currentSection = null;
         let currentContent = [];
 
-        console.log('🔍 Parsing resume text. First 10 lines:');
-        lines.slice(0, 10).forEach((line, i) => console.log(`${i}: "${line}"`));
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
@@ -34,7 +32,6 @@ class DocumentGenerator {
                 }
                 currentSection = line.replace(':', '');
                 currentContent = [];
-                console.log(`📋 Found section: "${currentSection}"`);
 
                 // Skip the underline if present
                 if (nextLine && nextLine.includes('='.repeat(5))) {
@@ -56,7 +53,6 @@ class DocumentGenerator {
             sections[currentSection] = currentContent.join('\n');
         }
 
-        console.log('📊 Parsed sections:', Object.keys(sections));
         return sections;
     }
 
@@ -75,7 +71,6 @@ class DocumentGenerator {
     }
 
     async generateWordDocument(resumeText, filename = 'improved-resume.docx') {
-        console.log('🔄 Generating Word document...');
 
         const sections = this.parseResumeText(resumeText);
         const children = [];
@@ -169,14 +164,18 @@ class DocumentGenerator {
         const filePath = path.join(this.outputDir, filename);
         await fs.writeFile(filePath, buffer);
 
-        console.log(`✅ Word document saved: ${filePath}`);
         return filePath;
     }
 
-    async generatePDF(resumeText, filename = 'improved-resume.pdf') {
-        console.log('🔄 Generating PDF document...');
+    async generatePDF(content, filename = 'improved-resume.pdf') {
+        // Check if this is a cover letter or resume based on filename or content
+        const isCoverLetter = filename.includes('coverletter') || content.includes('Dear Hiring Manager');
 
-        const sections = this.parseResumeText(resumeText);
+        if (isCoverLetter) {
+            return await this.generateCoverLetterPDF(content, filename);
+        }
+
+        const sections = this.parseResumeText(content);
 
         // Create HTML content
         const html = this.createHTMLFromSections(sections);
@@ -203,7 +202,34 @@ class DocumentGenerator {
         });
 
         await browser.close();
-        console.log(`✅ PDF document saved: ${filePath}`);
+        return filePath;
+    }
+
+    async generateCoverLetterPDF(coverLetterText, filename = 'cover-letter.pdf') {
+        const html = this.createCoverLetterHTML(coverLetterText);
+
+        const browser = await puppeteer.launch({
+            headless: 'new',
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+        });
+
+        const page = await browser.newPage();
+        await page.setContent(html, { waitUntil: 'networkidle0' });
+
+        const filePath = path.join(this.outputDir, filename);
+        await page.pdf({
+            path: filePath,
+            format: 'A4',
+            margin: {
+                top: '1in',
+                right: '1in',
+                bottom: '1in',
+                left: '1in'
+            },
+            printBackground: true
+        });
+
+        await browser.close();
         return filePath;
     }
 
@@ -216,69 +242,177 @@ class DocumentGenerator {
         <head>
             <meta charset="utf-8">
             <style>
+                /* Basic PDF-optimized layout */
                 body {
-                    font-family: 'Calibri', Arial, sans-serif;
+                    font-family: Arial, sans-serif;
+                    font-size: 11px;
                     line-height: 1.4;
-                    margin: 0;
+                    color: #000;
+                    margin: 0.75in;
                     padding: 0;
-                    color: #333;
+                    background: white;
                 }
-                .name {
-                    font-size: 24px;
-                    font-weight: bold;
+
+                /* Header styling */
+                .header-section {
                     text-align: center;
-                    margin-bottom: 8px;
-                }
-                .contact {
-                    text-align: center;
-                    margin-bottom: 4px;
-                    font-size: 11px;
-                }
-                .section-header {
-                    font-size: 14px;
-                    font-weight: bold;
-                    margin-top: 16px;
-                    margin-bottom: 8px;
+                    margin-bottom: 20px;
                     border-bottom: 1px solid #ccc;
-                    padding-bottom: 2px;
-                    page-break-after: avoid;
-                    break-after: avoid;
+                    padding-bottom: 10px;
                 }
+
+                .name {
+                    font-size: 18px;
+                    font-weight: bold;
+                    margin-bottom: 8px;
+                }
+
+                .contact {
+                    font-size: 10px;
+                    margin-bottom: 3px;
+                }
+
+                /* Section styling with minimal page-break issues */
+                .section-wrapper {
+                    margin-bottom: 20px;
+                    padding-top: 8px;
+                }
+
+                .section-header {
+                    font-size: 13px;
+                    font-weight: bold;
+                    color: #000;
+                    margin-top: 16px;
+                    margin-bottom: 10px;
+                    border-bottom: 2px solid #000;
+                    padding-bottom: 3px;
+                    text-transform: uppercase;
+                }
+
                 .section-content {
-                    font-size: 11px;
                     margin-bottom: 12px;
-                    page-break-inside: avoid;
-                    break-inside: avoid;
                 }
+
+                /* Experience entries */
+                .job-entry {
+                    margin-bottom: 16px;
+                    padding-bottom: 8px;
+                }
+
                 .job-title {
                     font-weight: bold;
-                    margin-top: 8px;
+                    font-size: 11px;
+                    margin-bottom: 3px;
                 }
+
+                .job-details {
+                    font-size: 10px;
+                    font-style: italic;
+                    margin-bottom: 6px;
+                    color: #333;
+                }
+
+                /* Bullet points with consistent spacing */
+                .bullet {
+                    margin: 3px 0 3px 16px;
+                    font-size: 10px;
+                    line-height: 1.3;
+                }
+
+                .bullet-group {
+                    margin-bottom: 6px;
+                }
+
+                /* Skills formatting */
                 .skills {
                     line-height: 1.3;
                 }
-                .bullet {
-                    margin-left: 20px;
-                    margin-bottom: 4px;
-                }
 
-                /* Prevent section headers from appearing at bottom of page */
-                .section-wrapper {
-                    page-break-inside: avoid;
-                    break-inside: avoid;
+                /* Consistent spacing for all sections */
+                .competencies-section, .education-section, .experience-section {
                     margin-bottom: 16px;
                 }
 
-                /* Keep education/credentials together */
-                .education-section {
+                /* Simple, clean separators */
+                hr {
+                    border: none;
+                    height: 1px;
+                    background-color: #ccc;
+                    margin: 10px 0;
+                }
+
+                /* Remove complex styling that causes PDF issues */
+                * {
+                    box-sizing: border-box;
+                }
+
+                /* Ensure consistent text rendering */
+                p, div, span, li, ul {
+                    margin: 0;
+                    padding: 0;
+                }
+
+                /* Page break controls for better PDF layout */
+                .section-wrapper {
                     page-break-inside: avoid;
                     break-inside: avoid;
+                }
+
+                .section-header {
+                    page-break-after: avoid;
+                    break-after: avoid;
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                }
+
+                .job-entry {
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                    margin-bottom: 12px;
+                }
+
+                .bullet-group {
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                }
+
+                .header-section {
+                    page-break-after: avoid;
+                    break-after: avoid;
+                }
+
+                /* Prevent orphaned content */
+                .job-title {
+                    page-break-after: avoid;
+                    break-after: avoid;
+                }
+
+                .job-details {
+                    page-break-after: avoid;
+                    break-after: avoid;
+                }
+
+                /* Print-specific optimizations */
+                @media print {
+                    body {
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+
+                    .section-wrapper {
+                        page-break-inside: avoid;
+                    }
+
+                    .job-entry {
+                        page-break-inside: avoid;
+                    }
                 }
             </style>
         </head>
         <body>`;
 
-        // Name and contact
+        // Header section - wrap contact info to keep together
+        html += `<div class="header-section">`;
         if (contactLines[0]) {
             html += `<div class="name">${contactLines[0]}</div>`;
         }
@@ -287,6 +421,7 @@ class DocumentGenerator {
                 html += `<div class="contact">${contactLines[i]}</div>`;
             }
         }
+        html += `</div>`;
 
         // Sections (support both Title Case and ALL CAPS versions)
         const sectionOrder = [
@@ -299,7 +434,16 @@ class DocumentGenerator {
 
         for (const sectionName of sectionOrder) {
             if (sections[sectionName]) {
-                const sectionClass = sectionName === 'EDUCATION & CREDENTIALS' ? 'section-wrapper education-section' : 'section-wrapper';
+                // Determine section class based on content
+                let sectionClass = 'section-wrapper';
+                if (sectionName === 'EDUCATION & CREDENTIALS') {
+                    sectionClass += ' education-section';
+                } else if (sectionName === 'Professional Experience' || sectionName === 'PROFESSIONAL EXPERIENCE') {
+                    sectionClass += ' experience-section';
+                } else if (sectionName === 'Core Competencies' || sectionName === 'CORE COMPETENCIES') {
+                    sectionClass += ' competencies-section';
+                }
+
                 html += `<div class="${sectionClass}">`;
                 html += `<div class="section-header">${sectionName}</div>`;
 
@@ -307,16 +451,73 @@ class DocumentGenerator {
                 if (sectionName === 'Core Competencies' || sectionName === 'CORE COMPETENCIES') {
                     const skills = content.split('•').map(skill => skill.trim()).filter(skill => skill);
                     html += `<div class="section-content skills">${skills.join(' • ')}</div>`;
+                } else if (sectionName === 'Professional Experience' || sectionName === 'PROFESSIONAL EXPERIENCE') {
+                    // Enhanced handling for professional experience
+                    html += `<div class="section-content">`;
+                    const contentLines = content.split('\n').filter(line => line.trim()).filter(line => !line.includes('='.repeat(10)));
+
+                    let currentJobEntry = null;
+                    for (const line of contentLines) {
+                        if (line.trim()) {
+                            const isJobTitle = line.includes(' at ') || line.match(/^[A-Z][^•\-]*$/);
+                            const isJobDetails = line.includes('|') && !line.startsWith('•') && !line.startsWith('-');
+                            const isBullet = line.startsWith('•') || line.startsWith('-');
+
+                            if (isJobTitle && !isBullet) {
+                                // Start new job entry
+                                if (currentJobEntry) {
+                                    html += `</div>`; // Close previous job entry
+                                }
+                                html += `<div class="job-entry">`;
+                                html += `<div class="job-title">${line}</div>`;
+                                currentJobEntry = true;
+                            } else if (isJobDetails) {
+                                html += `<div class="job-details">${line}</div>`;
+                            } else if (isBullet) {
+                                html += `<div class="bullet">${line}</div>`;
+                            } else {
+                                html += `<div>${line}</div>`;
+                            }
+                        }
+                    }
+                    if (currentJobEntry) {
+                        html += `</div>`; // Close last job entry
+                    }
+                    html += `</div>`;
                 } else {
                     html += `<div class="section-content">`;
-                    const contentLines = content.split('\n').filter(line => line.trim()).filter(line => !line.includes('='.repeat(10))); // Skip underline decorations
+                    const contentLines = content.split('\n').filter(line => line.trim()).filter(line => !line.includes('='.repeat(10)));
+
+                    // Group bullets together to prevent orphaning
+                    let bulletGroup = [];
                     for (const line of contentLines) {
                         if (line.trim()) {
                             const isBullet = line.startsWith('•') || line.startsWith('-');
-                            const isJobTitle = line.includes(' at ') && (sectionName === 'Professional Experience' || sectionName === 'PROFESSIONAL EXPERIENCE');
-                            const className = isBullet ? 'bullet' : (isJobTitle ? 'job-title' : '');
-                            html += `<div class="${className}">${line}</div>`;
+
+                            if (isBullet) {
+                                bulletGroup.push(line);
+                            } else {
+                                // Output any accumulated bullet group
+                                if (bulletGroup.length > 0) {
+                                    html += `<div class="bullet-group">`;
+                                    bulletGroup.forEach(bullet => {
+                                        html += `<div class="bullet">${bullet}</div>`;
+                                    });
+                                    html += `</div>`;
+                                    bulletGroup = [];
+                                }
+                                // Output non-bullet line
+                                html += `<div>${line}</div>`;
+                            }
                         }
+                    }
+                    // Output any remaining bullets
+                    if (bulletGroup.length > 0) {
+                        html += `<div class="bullet-group">`;
+                        bulletGroup.forEach(bullet => {
+                            html += `<div class="bullet">${bullet}</div>`;
+                        });
+                        html += `</div>`;
                     }
                     html += `</div>`;
                 }
@@ -331,8 +532,128 @@ class DocumentGenerator {
         return html;
     }
 
+    createCoverLetterHTML(coverLetterText) {
+        // Extract contact information from the first few lines if present
+        const lines = coverLetterText.split('\n');
+        const today = new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        // Add proper business letter formatting with contact info and date
+        const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body {
+                    font-family: 'Times New Roman', serif;
+                    font-size: 12pt;
+                    line-height: 1.6;
+                    color: #000;
+                    margin: 0;
+                    padding: 0;
+                    background: white;
+                }
+
+                .letter-container {
+                    max-width: 6.5in;
+                    margin: 0 auto;
+                    padding: 0;
+                }
+
+                .header {
+                    text-align: right;
+                    margin-bottom: 1in;
+                }
+
+                .contact-info {
+                    font-size: 12pt;
+                    line-height: 1.4;
+                }
+
+                .date {
+                    margin-top: 0.5in;
+                    margin-bottom: 1in;
+                }
+
+                .letter-content {
+                    font-size: 12pt;
+                    line-height: 1.6;
+                    text-align: left;
+                }
+
+                .greeting {
+                    margin-bottom: 1em;
+                }
+
+                .paragraph {
+                    margin-bottom: 1em;
+                    text-indent: 0;
+                }
+
+                .closing {
+                    margin-top: 1em;
+                    margin-bottom: 3em;
+                }
+
+                .signature {
+                    margin-top: 0.5in;
+                }
+
+                /* Ensure proper page breaks for printing */
+                @media print {
+                    body {
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="letter-container">
+                <div class="header">
+                    <div class="contact-info">
+                        Matthew Nicholson<br>
+                        Matthew2go@pm.me<br>
+                        +1-971-757-5840<br>
+                        White City, OR
+                    </div>
+                    <div class="date">${today}</div>
+                </div>
+
+                <div class="letter-content">
+                    ${this.formatCoverLetterContent(coverLetterText)}
+                </div>
+            </div>
+        </body>
+        </html>`;
+
+        return html;
+    }
+
+    formatCoverLetterContent(coverLetterText) {
+        // Split the cover letter into paragraphs and format them properly
+        const paragraphs = coverLetterText.split('\n\n').filter(p => p.trim());
+
+        return paragraphs.map(paragraph => {
+            const trimmed = paragraph.trim();
+            if (trimmed.startsWith('Dear ')) {
+                return `<div class="greeting">${trimmed}</div>`;
+            } else if (trimmed.includes('Sincerely') || trimmed.includes('Best regards')) {
+                return `<div class="closing">${trimmed}</div>`;
+            } else if (trimmed.length < 50 && !trimmed.includes('.')) {
+                // Likely a signature line
+                return `<div class="signature">${trimmed}</div>`;
+            } else {
+                return `<div class="paragraph">${trimmed}</div>`;
+            }
+        }).join('');
+    }
+
     async generateBothFormats(resumeText, baseFilename = 'improved-resume') {
-        console.log('📄 Generating both Word and PDF formats...');
 
         const wordFile = await this.generateWordDocument(resumeText, `${baseFilename}.docx`);
         const pdfFile = await this.generatePDF(resumeText, `${baseFilename}.pdf`);
