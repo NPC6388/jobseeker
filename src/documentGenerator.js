@@ -14,11 +14,40 @@ class DocumentGenerator {
     }
 
     parseResumeText(resumeText) {
-        const lines = resumeText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+        // First, let's do a more aggressive text restructuring for section detection
+        let text = resumeText;
+
+        // Define all possible section headers
+        const allSectionHeaders = [
+            'PROFESSIONAL SUMMARY', 'CORE COMPETENCIES', 'PROFESSIONAL EXPERIENCE',
+            'EDUCATION & CREDENTIALS', 'KEY ACHIEVEMENTS', 'CERTIFICATIONS',
+            'Professional Summary', 'Core Competencies', 'Professional Experience',
+            'Education & Credentials', 'Key Achievements', 'Certifications'
+        ];
+
+        // Force line breaks before and after section headers
+        for (const header of allSectionHeaders) {
+            // More aggressive pattern to catch headers anywhere in text
+            const patterns = [
+                new RegExp(`([\\s\\S]*?)(${header})([\\s\\S]*)`, 'gi'),
+                new RegExp(`\\s+(${header})\\s+`, 'gi'),
+                new RegExp(`(${header})`, 'gi')
+            ];
+
+            text = text.replace(new RegExp(`([^\\n])(${header})([^\\n])`, 'gi'), `$1\n\n${header}\n\n$3`);
+            text = text.replace(new RegExp(`(${header})\\s*([A-Z])`, 'gi'), `${header}\n\n$2`);
+        }
+
+        // Clean up excessive line breaks and normalize
+        text = text.replace(/\n{3,}/g, '\n\n').trim();
+
+        console.log('🔍 DEBUG: Text after aggressive restructuring:');
+        console.log('🔍 DEBUG: First 500 chars:', text.substring(0, 500));
+
+        const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
         const sections = {};
         let currentSection = null;
         let currentContent = [];
-
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
@@ -175,7 +204,38 @@ class DocumentGenerator {
             return await this.generateCoverLetterPDF(content, filename);
         }
 
-        const sections = this.parseResumeText(content);
+        console.log('🔍 DEBUG: Resume content length:', content.length);
+        console.log('🔍 DEBUG: First 200 chars:', content.substring(0, 200));
+
+        // First, process the text to handle escaped newlines like the DocumentEditor does
+        let processedContent = content
+            .replace(/\\n/g, '\n') // Convert escaped newlines to actual newlines
+            .replace(/\s{2,}/g, ' ') // Remove multiple spaces
+            .replace(/\n{3,}/g, '\n\n') // Remove excessive line breaks
+            .trim();
+
+        // Add line breaks before section headers to ensure proper parsing
+        const sectionHeaders = [
+            'PROFESSIONAL SUMMARY', 'CORE COMPETENCIES', 'PROFESSIONAL EXPERIENCE',
+            'EDUCATION & CREDENTIALS', 'KEY ACHIEVEMENTS', 'CERTIFICATIONS'
+        ];
+
+        for (const header of sectionHeaders) {
+            // Simple replacement to add line breaks before section headers
+            // Handle cases where header appears without proper spacing
+            const headerRegex = new RegExp(`\\s+(${header})\\s+`, 'gi');
+            processedContent = processedContent.replace(headerRegex, `\n\n${header}\n`);
+        }
+
+        // Also add debug output to see the processed content structure
+        console.log('🔍 DEBUG: Content after header processing:');
+        console.log('🔍 DEBUG: Lines after processing:', processedContent.split('\n').slice(0, 20));
+
+        console.log('🔍 DEBUG: Processed content length:', processedContent.length);
+        console.log('🔍 DEBUG: First 200 chars after processing:', processedContent.substring(0, 200));
+
+        const sections = this.parseResumeText(processedContent);
+        console.log('🔍 DEBUG: Parsed sections:', Object.keys(sections));
 
         // Create HTML content
         const html = this.createHTMLFromSections(sections);
@@ -457,11 +517,15 @@ class DocumentGenerator {
                     const contentLines = content.split('\n').filter(line => line.trim()).filter(line => !line.includes('='.repeat(10)));
 
                     let currentJobEntry = null;
+                    let expectingCompanyDetails = false;
+
                     for (const line of contentLines) {
                         if (line.trim()) {
-                            const isJobTitle = line.includes(' at ') || line.match(/^[A-Z][^•\-]*$/);
-                            const isJobDetails = line.includes('|') && !line.startsWith('•') && !line.startsWith('-');
                             const isBullet = line.startsWith('•') || line.startsWith('-');
+                            const isCompanyDetails = line.includes('|') && !isBullet;
+
+                            // If it's not a bullet and not company details, it's likely a job title
+                            const isJobTitle = !isBullet && !isCompanyDetails && !expectingCompanyDetails;
 
                             if (isJobTitle && !isBullet) {
                                 // Start new job entry
@@ -471,12 +535,17 @@ class DocumentGenerator {
                                 html += `<div class="job-entry">`;
                                 html += `<div class="job-title">${line}</div>`;
                                 currentJobEntry = true;
-                            } else if (isJobDetails) {
+                                expectingCompanyDetails = true;
+                            } else if (isCompanyDetails) {
                                 html += `<div class="job-details">${line}</div>`;
+                                expectingCompanyDetails = false;
                             } else if (isBullet) {
                                 html += `<div class="bullet">${line}</div>`;
+                                expectingCompanyDetails = false;
                             } else {
+                                // This handles cases where we might have additional job info
                                 html += `<div>${line}</div>`;
+                                expectingCompanyDetails = false;
                             }
                         }
                     }

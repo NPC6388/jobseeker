@@ -10,6 +10,7 @@ const ResumeTailor = require('./resumeTailor');
 const CoverLetterGenerator = require('./coverLetterGenerator');
 const ResumeImprover = require('./resumeImprover');
 const DocumentGenerator = require('./documentGenerator');
+const DocumentEditor = require('./documentEditor');
 
 const app = express();
 const server = http.createServer(app);
@@ -245,6 +246,7 @@ app.post('/api/generate-applications', async (req, res) => {
 
         const resumeTailor = new ResumeTailor();
         const coverLetterGenerator = new CoverLetterGenerator();
+        const documentEditor = new DocumentEditor();
 
         await resumeTailor.loadBaseResume();
 
@@ -262,13 +264,40 @@ app.post('/api/generate-applications', async (req, res) => {
                 // Generate cover letter
                 const coverLetterData = coverLetterGenerator.generateCoverLetter(job);
 
+                // Review and edit resume
+                const resumeReview = await documentEditor.reviewAndEditResume(
+                    resumeText,
+                    job.summary || job.description
+                );
+
+                // Review and edit cover letter
+                const coverLetterText = typeof coverLetterData === 'string'
+                    ? coverLetterData
+                    : coverLetterData.content || JSON.stringify(coverLetterData);
+
+                const coverLetterReview = await documentEditor.reviewAndEditCoverLetter(
+                    coverLetterText,
+                    job.summary || job.description,
+                    job.company
+                );
+
                 applications.push({
                     job: job,
                     resume: tailoredResumeData,
-                    resumeText: resumeText,
-                    coverLetter: coverLetterData
+                    resumeText: resumeReview.editedResume,
+                    resumeReview: {
+                        qualityScore: resumeReview.qualityScore,
+                        editorNotes: resumeReview.editorNotes,
+                        recommendations: resumeReview.recommendations
+                    },
+                    coverLetter: coverLetterData,
+                    coverLetterText: coverLetterReview.editedCoverLetter,
+                    coverLetterReview: {
+                        qualityScore: coverLetterReview.qualityScore,
+                        editorNotes: coverLetterReview.editorNotes,
+                        recommendations: coverLetterReview.recommendations
+                    }
                 });
-
 
             } catch (error) {
                 console.error(`❌ Error generating application for ${job.title}:`, error);
@@ -281,7 +310,16 @@ app.post('/api/generate-applications', async (req, res) => {
 
         res.json({
             applications: applications,
-            message: `Generated ${applications.length} applications`
+            message: `Generated ${applications.length} applications with editor reviews`,
+            editorSummary: {
+                totalApplications: applications.length,
+                averageResumeScore: applications.length > 0
+                    ? Math.round(applications.reduce((sum, app) => sum + app.resumeReview.qualityScore, 0) / applications.length)
+                    : 0,
+                averageCoverLetterScore: applications.length > 0
+                    ? Math.round(applications.reduce((sum, app) => sum + app.coverLetterReview.qualityScore, 0) / applications.length)
+                    : 0
+            }
         });
 
     } catch (error) {
@@ -761,6 +799,36 @@ app.get('/api/download-tailored-resume/:index', async (req, res) => {
     }
 });
 
+// Get editor review details for a specific application
+app.get('/api/editor-review/:index', async (req, res) => {
+    try {
+        const { index } = req.params;
+        const appIndex = parseInt(index);
+
+        if (isNaN(appIndex) || !lastGeneratedApplications || !lastGeneratedApplications[appIndex]) {
+            return res.status(404).json({ error: 'Application not found' });
+        }
+
+        const app = lastGeneratedApplications[appIndex];
+
+        res.json({
+            jobTitle: app.job.title,
+            company: app.job.company,
+            resumeReview: app.resumeReview,
+            coverLetterReview: app.coverLetterReview,
+            editorSummary: {
+                overallQuality: Math.round((app.resumeReview.qualityScore + app.coverLetterReview.qualityScore) / 2),
+                documentsReviewed: 2,
+                recommendationsCount: app.resumeReview.recommendations.length + app.coverLetterReview.recommendations.length
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ Error fetching editor review:', error);
+        res.status(500).json({ error: 'Failed to fetch editor review' });
+    }
+});
+
 // Generate tailored cover letter PDF
 app.get('/api/download-tailored-coverletter/:index', async (req, res) => {
     try {
@@ -774,8 +842,8 @@ app.get('/api/download-tailored-coverletter/:index', async (req, res) => {
         const app = lastGeneratedApplications[appIndex];
         const documentGenerator = new DocumentGenerator();
 
-        // Generate PDF from the cover letter text
-        const coverLetterText = app.coverLetter?.coverLetter || app.coverLetter || 'Cover letter not available';
+        // Generate PDF from the reviewed cover letter text
+        const coverLetterText = app.coverLetterText || app.coverLetter?.coverLetter || app.coverLetter || 'Cover letter not available';
         const filename = `tailored-coverletter-${app.job.company.replace(/[^a-zA-Z0-9]/g, '')}-${Date.now()}.pdf`;
         const pdfFilePath = await documentGenerator.generatePDF(coverLetterText, filename);
 
