@@ -264,22 +264,59 @@ app.post('/api/generate-applications', async (req, res) => {
                 // Generate cover letter
                 const coverLetterData = coverLetterGenerator.generateCoverLetter(job);
 
-                // Review and edit resume
-                const resumeReview = await documentEditor.reviewAndEditResume(
-                    resumeText,
-                    job.summary || job.description
-                );
+                // Prioritize AI usage: Try resume first, then cover letter
+                let resumeReview;
+                let coverLetterReview;
 
-                // Review and edit cover letter
                 const coverLetterText = typeof coverLetterData === 'string'
                     ? coverLetterData
                     : coverLetterData.content || JSON.stringify(coverLetterData);
 
-                const coverLetterReview = await documentEditor.reviewAndEditCoverLetter(
-                    coverLetterText,
-                    job.summary || job.description,
-                    job.company
-                );
+                // Strategy: Try AI for resume first (higher priority)
+                if (documentEditor.canMakeApiRequest()) {
+                    console.log('🤖 Using AI for resume review...');
+                    try {
+                        resumeReview = await documentEditor.reviewAndEditResume(
+                            resumeText,
+                            job.summary || job.description
+                        );
+                    } catch (error) {
+                        if (error.code === 'rate_limit_exceeded') {
+                            console.log('⏳ Rate limit hit during resume review, using fallback...');
+                            resumeReview = documentEditor.fallbackResumeReview(resumeText);
+                        } else {
+                            throw error;
+                        }
+                    }
+                } else {
+                    console.log('⏳ Rate limit preventive: using fallback for resume...');
+                    resumeReview = documentEditor.fallbackResumeReview(resumeText);
+                }
+
+                // Try AI for cover letter only if enabled and we still have API capacity
+                if (process.env.DISABLE_COVER_LETTER_AI === 'true') {
+                    console.log('📝 Cover letter AI disabled, using fallback...');
+                    coverLetterReview = documentEditor.fallbackCoverLetterReview(coverLetterText);
+                } else if (documentEditor.canMakeApiRequest()) {
+                    console.log('🤖 Using AI for cover letter review...');
+                    try {
+                        coverLetterReview = await documentEditor.reviewAndEditCoverLetter(
+                            coverLetterText,
+                            job.summary || job.description,
+                            job.company
+                        );
+                    } catch (error) {
+                        if (error.code === 'rate_limit_exceeded') {
+                            console.log('⏳ Rate limit hit during cover letter review, using fallback...');
+                            coverLetterReview = documentEditor.fallbackCoverLetterReview(coverLetterText);
+                        } else {
+                            throw error;
+                        }
+                    }
+                } else {
+                    console.log('⏳ Rate limit preventive: using fallback for cover letter...');
+                    coverLetterReview = documentEditor.fallbackCoverLetterReview(coverLetterText);
+                }
 
                 applications.push({
                     job: job,

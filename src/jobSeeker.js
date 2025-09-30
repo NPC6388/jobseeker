@@ -29,8 +29,10 @@ class JobSeeker {
         // Load previously applied jobs
         await this.loadAppliedJobs();
 
-        // Initialize LinkedIn scraper
-        await this.linkedinScraper.initialize();
+        // Initialize LinkedIn scraper only if not disabled
+        if (process.env.DISABLE_LINKEDIN !== 'true') {
+            await this.linkedinScraper.initialize();
+        }
 
     }
 
@@ -187,7 +189,9 @@ class JobSeeker {
     }
 
     async cleanup() {
-        await this.linkedinScraper.close();
+        if (process.env.DISABLE_LINKEDIN !== 'true') {
+            await this.linkedinScraper.close();
+        }
     }
 }
 

@@ -2,6 +2,10 @@
 
 An automated job search application that finds part-time day jobs in your local area and can automatically submit applications with your resume.
 
+## ⚠️ KNOWN ISSUES
+
+**Resume Generator Quality**: The current AI-powered resume tailoring system needs a major overhaul. While the hybrid rule-based/AI approach has been implemented to improve consistency, the resume generation quality is still inconsistent and may produce poor formatting or content issues. This is a high-priority item for future development.
+
 ## Features
 
 - 🔍 **Multi-Platform Search**: Searches Indeed and LinkedIn for job opportunities
