@@ -2,18 +2,12 @@ const fs = require('fs-extra');
 const path = require('path');
 const mammoth = require('mammoth');
 const ResumeImprover = require('./resumeImprover');
-const AIResumeEditor = require('./aiResumeEditor');
-const KeywordOptimizer = require('./keywordOptimizer');
-const AchievementRewriter = require('./achievementRewriter');
 
 class ResumeTailor {
     constructor() {
         this.baseResume = null;
         this.resumePath = process.env.RESUME_PATH || './matthew-nicholson-resume.docx';
         this.resumeImprover = new ResumeImprover();
-        this.aiEditor = new AIResumeEditor();
-        this.keywordOptimizer = new KeywordOptimizer();
-        this.achievementRewriter = new AchievementRewriter();
     }
 
     async loadBaseResume() {

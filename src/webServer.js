@@ -272,6 +272,14 @@ app.post('/api/generate-applications', async (req, res) => {
 
         console.log(`\n🚀 Preparing application data for ${jobs.length} job(s)...`);
 
+        // Get resume path
+        const resumePath = process.env.RESUME_PATH || './matthew-nicholson-resume.docx';
+        const fullResumePath = path.resolve(resumePath);
+
+        if (!await fs.pathExists(fullResumePath)) {
+            return res.status(400).json({ error: 'Resume file not found. Please upload your resume first.' });
+        }
+
         const resumeTailor = new ResumeTailor();
         const coverLetterGen = new CoverLetterGenerator();
 
@@ -284,9 +292,6 @@ app.post('/api/generate-applications', async (req, res) => {
             try {
                 console.log(`\n📝 Processing: ${job.title} at ${job.company}`);
 
-                // Load base resume text
-                const resumeText = resumeTailor.convertResumeToText(baseResume);
-
                 // Generate basic cover letter
                 const coverLetter = coverLetterGen.generateCoverLetter(baseResume, job);
 
@@ -295,11 +300,11 @@ app.post('/api/generate-applications', async (req, res) => {
                 applications.push({
                     job: job,
                     resume: baseResume,
-                    resumeText: resumeText,
+                    resumePath: fullResumePath, // Store the path to the actual resume file
                     resumeReview: {
                         qualityScore: 85,
-                        editorNotes: `Base resume for ${job.title} at ${job.company}`,
-                        recommendations: ['Using standard resume format']
+                        editorNotes: `Using uploaded resume for ${job.title} at ${job.company}`,
+                        recommendations: ['Using your uploaded resume']
                     },
                     coverLetter: { coverLetter: coverLetter },
                     coverLetterText: coverLetter,
@@ -353,8 +358,11 @@ app.post('/api/submit-applications', async (req, res) => {
 
                 // Use application manager to submit the job application
                 if (currentJobSeeker) {
+                    // Get the resume path
+                    const resumePath = application.resumePath || process.env.RESUME_PATH || './matthew-nicholson-resume.docx';
+
                     const result = await currentJobSeeker.applicationManager.applyToJob(job, {
-                        resume: application.resumeText,
+                        resumePath: resumePath,
                         coverLetter: application.coverLetter.coverLetter
                     });
 
@@ -927,37 +935,46 @@ app.get('/api/download-tailored-resume/:index', async (req, res) => {
     }
 });
 
-// Alias for test mode
+// Alias for test mode - serve the uploaded resume file
 app.get('/api/download-resume/:index', async (req, res) => {
     try {
         const { index } = req.params;
         const appIndex = parseInt(index);
 
         if (isNaN(appIndex) || !lastGeneratedApplications || !lastGeneratedApplications[appIndex]) {
-            return res.status(404).json({ error: 'Tailored application not found' });
+            return res.status(404).json({ error: 'Application not found' });
         }
 
         const app = lastGeneratedApplications[appIndex];
-        const documentGenerator = new DocumentGenerator();
 
-        // Generate PDF from the tailored resume text
-        const filename = `tailored-resume-${app.job.company.replace(/[^a-zA-Z0-9]/g, '')}-${Date.now()}.pdf`;
-        const pdfFilePath = await documentGenerator.generatePDF(app.resumeText, filename);
+        // Get the uploaded resume file path
+        const resumePath = app.resumePath || process.env.RESUME_PATH || './matthew-nicholson-resume.docx';
 
-        // Read the generated PDF file
-        const pdfBuffer = await fs.readFile(pdfFilePath);
+        if (!await fs.pathExists(resumePath)) {
+            return res.status(404).json({ error: 'Resume file not found' });
+        }
+
+        // Determine file extension
+        const ext = path.extname(resumePath).toLowerCase();
+        const filename = `resume-${app.job.company.replace(/[^a-zA-Z0-9]/g, '')}${ext}`;
+
+        // Set appropriate content type
+        const contentType = ext === '.pdf' ? 'application/pdf' :
+                           ext === '.docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' :
+                           'application/octet-stream';
 
         res.set({
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': `inline; filename="${filename}"`,
-            'Content-Length': pdfBuffer.length
+            'Content-Type': contentType,
+            'Content-Disposition': `inline; filename="${filename}"`
         });
 
-        res.send(pdfBuffer);
+        // Stream the file
+        const fileStream = fs.createReadStream(resumePath);
+        fileStream.pipe(res);
 
     } catch (error) {
-        console.error('❌ Error generating tailored resume PDF:', error);
-        res.status(500).json({ error: 'Failed to generate tailored resume PDF' });
+        console.error('❌ Error serving resume file:', error);
+        res.status(500).json({ error: 'Failed to serve resume file' });
     }
 });
 
