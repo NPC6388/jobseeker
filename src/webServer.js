@@ -167,14 +167,39 @@ app.post('/api/upload-resume', upload.single('resume'), (req, res) => {
             return res.status(400).json({ error: 'No file uploaded' });
         }
 
-        const resumePath = path.join(__dirname, '..', 'matthew-nicholson-resume.docx');
-        fs.moveSync(req.file.path, resumePath);
+        // Get original file extension
+        const fileExt = path.extname(req.file.originalname).toLowerCase();
 
-        process.env.RESUME_PATH = './matthew-nicholson-resume.docx';
-        updateEnvFile({ resumePath: './matthew-nicholson-resume.docx' });
+        // Validate file type
+        if (fileExt !== '.pdf' && fileExt !== '.docx' && fileExt !== '.doc') {
+            fs.unlinkSync(req.file.path); // Clean up uploaded file
+            return res.status(400).json({ error: 'Invalid file type. Please upload a PDF or Word document.' });
+        }
 
-        res.json({ message: 'Resume uploaded successfully' });
+        const resumeFileName = `matthew-nicholson-resume${fileExt}`;
+        const resumePath = path.join(__dirname, '..', resumeFileName);
+
+        // Remove old resume files
+        const possibleExtensions = ['.pdf', '.docx', '.doc'];
+        possibleExtensions.forEach(ext => {
+            const oldPath = path.join(__dirname, '..', `matthew-nicholson-resume${ext}`);
+            if (fs.existsSync(oldPath)) {
+                fs.unlinkSync(oldPath);
+            }
+        });
+
+        fs.moveSync(req.file.path, resumePath, { overwrite: true });
+
+        process.env.RESUME_PATH = `./${resumeFileName}`;
+        updateEnvFile({ resumePath: `./${resumeFileName}` });
+
+        res.json({
+            message: 'Resume uploaded successfully',
+            filename: resumeFileName,
+            fileType: fileExt
+        });
     } catch (error) {
+        console.error('Resume upload error:', error);
         res.status(500).json({ error: error.message });
     }
 });

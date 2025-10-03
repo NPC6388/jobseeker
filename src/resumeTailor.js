@@ -6,8 +6,31 @@ const ResumeImprover = require('./resumeImprover');
 class ResumeTailor {
     constructor() {
         this.baseResume = null;
-        this.resumePath = process.env.RESUME_PATH || './matthew-nicholson-resume.docx';
+        // Try to find the resume file with different extensions
+        this.resumePath = this.findResumeFile();
         this.resumeImprover = new ResumeImprover();
+    }
+
+    findResumeFile() {
+        if (process.env.RESUME_PATH) {
+            return process.env.RESUME_PATH;
+        }
+
+        // Check for resume file with different extensions
+        const possibleFiles = [
+            './matthew-nicholson-resume.pdf',
+            './matthew-nicholson-resume.docx',
+            './matthew-nicholson-resume.doc'
+        ];
+
+        for (const filePath of possibleFiles) {
+            if (fs.existsSync(filePath)) {
+                return filePath;
+            }
+        }
+
+        // Default to .docx if nothing found
+        return './matthew-nicholson-resume.docx';
     }
 
     async loadBaseResume() {
