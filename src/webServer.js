@@ -225,39 +225,26 @@ app.get('/api/resume-info', async (req, res) => {
 
         if (await fs.pathExists(fullPath)) {
             const stats = await fs.stat(fullPath);
-            const resumeTailor = new ResumeTailor();
+            const ext = path.extname(fullPath).toLowerCase();
+            const fileType = ext === '.pdf' ? 'PDF' : ext === '.docx' ? 'Word Document' : 'Document';
 
-            try {
-                await resumeTailor.loadBaseResume();
-                const resumeData = resumeTailor.baseResume;
-
-                res.json({
-                    exists: true,
-                    filename: path.basename(fullPath),
-                    path: resumePath,
-                    size: stats.size,
-                    uploadDate: stats.mtime,
-                    resumeData: {
-                        name: resumeData.personalInfo?.name || 'Not specified',
-                        email: resumeData.personalInfo?.email || 'Not specified',
-                        phone: resumeData.personalInfo?.phone || 'Not specified',
-                        summary: resumeData.professionalSummary || 'No summary available',
-                        skillsCount: resumeData.coreCompetencies?.length || 0,
-                        experienceCount: resumeData.experience?.length || 0,
-                        educationCount: resumeData.education?.length || 0
-                    }
-                });
-            } catch (error) {
-                // Resume exists but couldn't parse it
-                res.json({
-                    exists: true,
-                    filename: path.basename(fullPath),
-                    path: resumePath,
-                    size: stats.size,
-                    uploadDate: stats.mtime,
-                    error: 'Could not parse resume content'
-                });
-            }
+            res.json({
+                exists: true,
+                filename: path.basename(fullPath),
+                path: resumePath,
+                size: stats.size,
+                uploadDate: stats.mtime,
+                fileType: fileType,
+                resumeData: {
+                    name: 'Resume uploaded',
+                    email: 'Using uploaded file',
+                    phone: '',
+                    summary: `Your ${fileType} resume is ready to use. The actual file will be used when applying to jobs.`,
+                    skillsCount: 0,
+                    experienceCount: 0,
+                    educationCount: 0
+                }
+            });
         } else {
             res.json({
                 exists: false,
@@ -305,26 +292,30 @@ app.post('/api/generate-applications', async (req, res) => {
             return res.status(400).json({ error: 'Resume file not found. Please upload your resume first.' });
         }
 
-        const resumeTailor = new ResumeTailor();
-        const coverLetterGen = new CoverLetterGenerator();
-
-        await resumeTailor.loadBaseResume();
-        const baseResume = resumeTailor.baseResume;
-
         const applications = [];
 
         for (const job of jobs) {
             try {
                 console.log(`\n📝 Processing: ${job.title} at ${job.company}`);
 
-                // Generate basic cover letter
-                const coverLetter = coverLetterGen.generateCoverLetter(baseResume, job);
+                // Generate simple cover letter without resume parsing
+                const coverLetter = `Dear Hiring Manager,
+
+I am writing to express my strong interest in the ${job.title} position at ${job.company}.
+
+${job.summary ? 'After reviewing the job description, I am confident that my skills and experience align well with your requirements.' : 'I believe my background makes me a strong candidate for this role.'}
+
+I am excited about the opportunity to contribute to ${job.company} and would welcome the chance to discuss how my qualifications match your needs.
+
+Thank you for your consideration. I look forward to hearing from you.
+
+Sincerely,
+Matthew Nicholson`;
 
                 console.log(`✅ Application data prepared for ${job.title}`);
 
                 applications.push({
                     job: job,
-                    resume: baseResume,
                     resumePath: fullResumePath, // Store the path to the actual resume file
                     resumeReview: {
                         qualityScore: 85,
