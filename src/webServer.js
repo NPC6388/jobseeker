@@ -5,6 +5,7 @@ const socketIo = require('socket.io');
 const fs = require('fs-extra');
 const path = require('path');
 const multer = require('multer');
+const pdfParse = require('pdf-parse');
 const JobSeeker = require('./jobSeeker');
 const ResumeTailor = require('./resumeTailor');
 const CoverLetterGenerator = require('./coverLetterGenerator');
@@ -228,6 +229,60 @@ app.get('/api/resume-info', async (req, res) => {
             const ext = path.extname(fullPath).toLowerCase();
             const fileType = ext === '.pdf' ? 'PDF' : ext === '.docx' ? 'Word Document' : 'Document';
 
+            let resumeData = {
+                name: 'Not found',
+                email: 'Not found',
+                phone: 'Not found',
+                summary: 'Could not extract resume text',
+                skillsCount: 0,
+                experienceCount: 0,
+                educationCount: 0
+            };
+
+            try {
+                let resumeText = '';
+
+                if (ext === '.pdf') {
+                    // Parse PDF
+                    const dataBuffer = await fs.readFile(fullPath);
+                    const data = await pdfParse(dataBuffer);
+                    resumeText = data.text;
+                } else if (ext === '.docx' || ext === '.doc') {
+                    // Parse DOCX using mammoth
+                    const mammoth = require('mammoth');
+                    const result = await mammoth.extractRawText({ path: fullPath });
+                    resumeText = result.value;
+                }
+
+                if (resumeText) {
+                    // Extract basic info from text
+                    const emailMatch = resumeText.match(/[\w.-]+@[\w.-]+\.\w+/);
+                    const phoneMatch = resumeText.match(/(?:\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})/);
+
+                    // Try to find name (usually first line or near top)
+                    const lines = resumeText.split('\n').filter(line => line.trim());
+                    const nameMatch = lines[0] && lines[0].length < 50 ? lines[0].trim() : null;
+
+                    // Count sections
+                    const skillsMatch = resumeText.match(/skills?|competencies|technologies/i);
+                    const experienceMatch = resumeText.match(/experience|employment|work history/i);
+                    const educationMatch = resumeText.match(/education|qualifications/i);
+
+                    resumeData = {
+                        name: nameMatch || 'Name not found',
+                        email: emailMatch ? emailMatch[0] : 'Email not found',
+                        phone: phoneMatch ? phoneMatch[0] : 'Phone not found',
+                        summary: `Resume parsed successfully. ${resumeText.split(' ').length} words total.`,
+                        skillsCount: skillsMatch ? 1 : 0,
+                        experienceCount: experienceMatch ? 1 : 0,
+                        educationCount: educationMatch ? 1 : 0
+                    };
+                }
+            } catch (parseError) {
+                console.error('Error parsing resume:', parseError);
+                resumeData.summary = `${fileType} uploaded. Could not parse content automatically.`;
+            }
+
             res.json({
                 exists: true,
                 filename: path.basename(fullPath),
@@ -235,15 +290,7 @@ app.get('/api/resume-info', async (req, res) => {
                 size: stats.size,
                 uploadDate: stats.mtime,
                 fileType: fileType,
-                resumeData: {
-                    name: 'Resume uploaded',
-                    email: 'Using uploaded file',
-                    phone: '',
-                    summary: `Your ${fileType} resume is ready to use. The actual file will be used when applying to jobs.`,
-                    skillsCount: 0,
-                    experienceCount: 0,
-                    educationCount: 0
-                }
+                resumeData: resumeData
             });
         } else {
             res.json({
