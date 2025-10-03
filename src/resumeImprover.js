@@ -468,6 +468,58 @@ class ResumeImprover {
         return suggestions;
     }
 
+    getDetailedScoreBreakdown(analysis) {
+        // Provide a detailed breakdown of the ATS score components
+        const breakdown = {
+            totalScore: Math.round(analysis.score),
+            maxScore: 100,
+            percentage: Math.round(analysis.score),
+            grade: this.getScoreGrade(analysis.score),
+            components: {
+                structure: {
+                    score: 0,
+                    maxScore: 30,
+                    description: 'Resume structure and section organization'
+                },
+                keywords: {
+                    score: 0,
+                    maxScore: 20,
+                    description: 'Job description keyword matching'
+                },
+                content: {
+                    score: 0,
+                    maxScore: 25,
+                    description: 'Content quality and achievements'
+                },
+                formatting: {
+                    score: 0,
+                    maxScore: 15,
+                    description: 'ATS-friendly formatting'
+                },
+                compatibility: {
+                    score: 0,
+                    maxScore: 10,
+                    description: 'Overall ATS compatibility'
+                }
+            },
+            strengths: analysis.strengths || [],
+            weaknesses: analysis.issues || [],
+            topRecommendations: (analysis.recommendations || []).slice(0, 5),
+            keywordMatchRate: analysis.keywordAnalysis?.matchPercentage || 0
+        };
+
+        return breakdown;
+    }
+
+    getScoreGrade(score) {
+        if (score >= 90) return { letter: 'A+', label: 'Excellent', color: '#22c55e' };
+        if (score >= 80) return { letter: 'A', label: 'Very Good', color: '#3b82f6' };
+        if (score >= 70) return { letter: 'B', label: 'Good', color: '#8b5cf6' };
+        if (score >= 60) return { letter: 'C', label: 'Fair', color: '#f59e0b' };
+        if (score >= 50) return { letter: 'D', label: 'Poor', color: '#ef4444' };
+        return { letter: 'F', label: 'Needs Work', color: '#dc2626' };
+    }
+
     async generateImprovedResume(originalResume, analysis, targetJob = null) {
 
         const improvements = {

@@ -1,17 +1,101 @@
 const { chromium } = require('playwright');
 const axios = require('axios');
+const readline = require('readline');
 
 class LinkedInScraper {
     constructor() {
         this.baseUrl = 'https://www.linkedin.com';
         this.browser = null;
         this.page = null;
+        this.isLoggedIn = false;
+        this.credentials = {
+            email: process.env.LINKEDIN_EMAIL || '',
+            password: process.env.LINKEDIN_PASSWORD || ''
+        };
+    }
+
+    async promptForCredentials() {
+        // If credentials are already set in env, use them
+        if (this.credentials.email && this.credentials.password) {
+            return this.credentials;
+        }
+
+        // If running in web mode, don't block - just return empty
+        // User should use the UI to provide credentials
+        console.log('⚠️ LinkedIn credentials not set. Use the web UI to login to LinkedIn.');
+        return { email: '', password: '' };
+    }
+
+    async login() {
+        if (this.isLoggedIn) {
+            return true;
+        }
+
+        try {
+            console.log('🔑 Logging into LinkedIn...');
+
+            // Get credentials
+            const creds = await this.promptForCredentials();
+
+            if (!creds.email || !creds.password) {
+                console.log('❌ LinkedIn credentials not provided, skipping LinkedIn jobs');
+                return false;
+            }
+
+            // Navigate to LinkedIn login page
+            await this.page.goto('https://www.linkedin.com/login', {
+                waitUntil: 'networkidle',
+                timeout: 30000
+            });
+
+            // Fill in credentials
+            await this.page.fill('input[name="session_key"]', creds.email);
+            await this.page.fill('input[name="session_password"]', creds.password);
+
+            // Click sign in button
+            await this.page.click('button[type="submit"]');
+
+            // Wait for navigation
+            await this.page.waitForTimeout(3000);
+
+            // Check if login was successful
+            const currentUrl = this.page.url();
+
+            if (currentUrl.includes('/feed') || currentUrl.includes('/jobs')) {
+                console.log('✅ Successfully logged into LinkedIn');
+                this.isLoggedIn = true;
+                return true;
+            } else if (currentUrl.includes('/checkpoint')) {
+                console.log('⚠️ LinkedIn requires additional verification (2FA/CAPTCHA)');
+                console.log('📱 Please complete verification in the browser window...');
+
+                // Wait for user to complete verification (up to 2 minutes)
+                await this.page.waitForURL(url =>
+                    url.includes('/feed') || url.includes('/jobs'),
+                    { timeout: 120000 }
+                ).catch(() => {
+                    console.log('❌ Verification timeout - please try again');
+                    return false;
+                });
+
+                this.isLoggedIn = true;
+                console.log('✅ Verification completed, logged in successfully');
+                return true;
+            } else {
+                console.log('❌ LinkedIn login failed');
+                return false;
+            }
+
+        } catch (error) {
+            console.error('❌ Error during LinkedIn login:', error.message);
+            return false;
+        }
     }
 
     async initialize() {
         try {
             this.browser = await chromium.launch({
-                headless: true,
+                headless: false, // Show browser for login
                 args: [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
@@ -66,6 +150,16 @@ class LinkedInScraper {
                 await this.initialize();
             }
 
+            // Login if not already logged in
+            if (!this.isLoggedIn) {
+                const loginSuccess = await this.login();
+                if (!loginSuccess) {
+                    console.log('⚠️ Skipping LinkedIn jobs - use "LinkedIn Login" button in dashboard');
+                    return [];
+                }
+            }
+
+            console.log('🔍 Searching LinkedIn jobs...');
             const searchUrl = `${this.baseUrl}/jobs/search/?keywords=${encodeURIComponent(keywords)}&location=${encodeURIComponent(location)}&f_JT=P&f_WT=1`; // P = Part-time, WT=1 = Remote/Hybrid
 
             await this.page.goto(searchUrl, {

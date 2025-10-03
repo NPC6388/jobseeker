@@ -424,6 +424,34 @@
             border-color: #2196f3;
         }
 
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 0 20px rgba(231, 76, 60, 0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .switch input:checked + span {
+            background-color: #27ae60 !important;
+        }
+
+        .switch input:checked + span span {
+            transform: translateX(26px);
+        }
+
         @media (max-width: 768px) {
             .dashboard {
                 grid-template-columns: 1fr;
@@ -442,7 +470,10 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
+        <div class="header" style="position: relative;">
+            <button id="testModeBtn" style="position: absolute; top: 20px; left: 20px; background: #27ae60; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: all 0.3s ease;">
+                🧪 Test Mode (3 Random Jobs)
+            </button>
             <h1>🔍 JobSeeker Dashboard</h1>
             <p>Automated Job Search & Application Management</p>
         </div>
@@ -564,6 +595,85 @@
                     <button class="btn btn-primary" id="startSearch">🚀 Start Job Search</button>
                     <button class="btn btn-danger" id="stopSearch" disabled>🛑 Stop Search</button>
                     <button class="btn btn-success" id="saveConfig">💾 Save Configuration</button>
+                    <button class="btn" id="linkedinLoginBtn" style="background: #0077b5; color: white; margin-left: 10px;">
+                        <svg style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px;" viewBox="0 0 24 24" fill="white">
+                            <path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z"></path>
+                        </svg>
+                        LinkedIn Login
+                    </button>
+                </div>
+            </div>
+
+            <!-- LinkedIn Login Modal -->
+            <div id="linkedinModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; backdrop-filter: blur(5px);">
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); max-width: 400px; width: 90%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="margin: 0; color: #0077b5; display: flex; align-items: center;">
+                            <svg style="width: 30px; height: 30px; margin-right: 10px;" viewBox="0 0 24 24" fill="#0077b5">
+                                <path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z"></path>
+                            </svg>
+                            LinkedIn Login
+                        </h2>
+                        <button id="closeLinkedinModal" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #95a5a6;">&times;</button>
+                    </div>
+                    <p style="color: #7f8c8d; margin-bottom: 20px;">Enter your LinkedIn credentials to search for jobs. Your credentials are only stored for this session.</p>
+                    <form id="linkedinLoginForm">
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">Email:</label>
+                            <input type="email" id="linkedinEmail" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">Password:</label>
+                            <input type="password" id="linkedinPassword" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%; background: #0077b5; padding: 12px;">
+                            🔐 Login to LinkedIn
+                        </button>
+                    </form>
+                    <p style="margin-top: 15px; font-size: 0.85em; color: #95a5a6; text-align: center;">
+                        🔒 Your credentials are encrypted and only used for job searching.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Automation Mode Panel -->
+            <div class="panel control-panel" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                <h2 style="color: white;">🤖 Smart Automation Mode</h2>
+                <p style="margin-bottom: 20px; opacity: 0.95;">Enable full automation with intelligent pausing when manual input is needed.</p>
+
+                <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.15); padding: 20px; border-radius: 10px; backdrop-filter: blur(10px);">
+                    <div>
+                        <h3 style="margin: 0 0 5px 0; color: white; font-size: 1.2em;">Full Auto Mode</h3>
+                        <p style="margin: 0; font-size: 0.9em; opacity: 0.9;">System will pause and notify you when manual input is required</p>
+                    </div>
+                    <label class="switch" style="position: relative; display: inline-block; width: 60px; height: 34px;">
+                        <input type="checkbox" id="autoModeToggle" style="opacity: 0; width: 0; height: 0;">
+                        <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.3); transition: .4s; border-radius: 34px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">
+                            <span style="position: absolute; content: ''; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.2);"></span>
+                        </span>
+                    </label>
+                </div>
+
+                <div id="autoModeStatus" style="margin-top: 15px; padding: 12px; background: rgba(255,255,255,0.15); border-radius: 8px; text-align: center; display: none;">
+                    <span id="autoModeStatusText" style="font-weight: 600;"></span>
+                </div>
+            </div>
+
+            <!-- Notification Panel -->
+            <div id="notificationPanel" class="panel" style="display: none; background: linear-gradient(135deg, #f39c12 0%, #e74c3c 100%); color: white; border: 2px solid #c0392b; animation: pulse 2s infinite;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2 style="color: white; margin: 0;">🔔 Manual Input Required</h2>
+                    <button id="dismissNotification" style="background: rgba(255,255,255,0.3); border: none; color: white; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: 600;">Dismiss</button>
+                </div>
+                <div id="notificationContent" style="margin-top: 15px; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 8px; backdrop-filter: blur(10px);">
+                    <p id="notificationMessage" style="font-size: 1.1em; margin-bottom: 15px;"></p>
+                    <div id="requiredFields" style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                        <h4 style="margin: 0 0 10px 0; color: white;">Fields Needing Attention:</h4>
+                        <ul id="fieldsList" style="margin: 0; padding-left: 20px;"></ul>
+                    </div>
+                    <div style="text-align: center;">
+                        <button id="continueApplication" class="btn" style="background: #27ae60; color: white; border: none; padding: 12px 30px; font-size: 1.1em; font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">✓ Continue Application</button>
+                    </div>
                 </div>
             </div>
 

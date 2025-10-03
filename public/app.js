@@ -664,7 +664,9 @@ function displayGeneratedApplications() {
         return;
     }
 
-    elements.applicationsList.innerHTML = generatedApplications.map((app, index) => `
+    elements.applicationsList.innerHTML = generatedApplications.map((app, index) => {
+        const atsScore = app.atsScore || { totalScore: 0, grade: { letter: 'N/A', label: 'Unknown', color: '#95a5a6' }, keywordMatchRate: 0 };
+        return `
         <div class="application-preview">
             <div class="application-header">
                 <div>
@@ -672,26 +674,39 @@ function displayGeneratedApplications() {
                     <p style="margin: 5px 0 0 0; color: #7f8c8d;">${escapeHtml(app.job.company)} • ${escapeHtml(app.job.location)}</p>
                 </div>
                 <div class="ats-score">
-                    <span style="font-size: 0.9em; color: #7f8c8d;">ATS Score:</span>
-                    <span class="score-badge ${getScoreClass(app.resume?.atsScore || 75)}">${app.resume?.atsScore || 75}%</span>
+                    <div style="text-align: right;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em; color: #7f8c8d;">ATS Score:</span>
+                            <span class="score-badge ${getScoreClass(atsScore.totalScore)}" style="background-color: ${atsScore.grade.color}20; color: ${atsScore.grade.color}; border: 2px solid ${atsScore.grade.color};">
+                                ${atsScore.grade.letter} (${atsScore.totalScore}%)
+                            </span>
+                        </div>
+                        <div style="font-size: 0.75em; color: #95a5a6;">
+                            ${atsScore.grade.label} • Keywords: ${atsScore.keywordMatchRate}%
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <div class="tailoring-notes">
-                <strong>📝 Tailoring Notes:</strong>
-                <ul style="margin: 5px 0 0 20px;">
-                    ${(app.resume?.tailoringNotes || ['Resume tailored for this position']).map(note => `<li>${escapeHtml(note)}</li>`).join('')}
+                <strong>📊 ATS Analysis:</strong>
+                <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+                    ${atsScore.strengths && atsScore.strengths.length > 0 ? atsScore.strengths.slice(0, 3).map(s => `<li style="color: #27ae60;">${escapeHtml(s)}</li>`).join('') : '<li>Analysis in progress...</li>'}
                 </ul>
+                ${atsScore.weaknesses && atsScore.weaknesses.length > 0 ? `
+                <strong style="margin-top: 8px; display: block;">⚠️ Areas to Improve:</strong>
+                <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+                    ${atsScore.weaknesses.slice(0, 2).map(w => `<li style="color: #e67e22;">${escapeHtml(w)}</li>`).join('')}
+                </ul>
+                ` : ''}
             </div>
 
-            <div class="keyword-matches" style="margin: 10px 0;">
-                <strong style="font-size: 0.9em;">🎯 Keyword Matches:</strong>
-                <div style="margin-top: 8px;">
-                    ${(app.resume?.keywordMatches || []).map(match =>
-                        `<span class="keyword-match ${match.matched ? 'keyword-matched' : 'keyword-unmatched'}">${escapeHtml(match.keyword)}</span>`
-                    ).join('')}
-                </div>
+            ${app.resumeReview && app.resumeReview.qualityScore ? `
+            <div style="background: #f8f9fa; padding: 10px; border-radius: 6px; margin: 10px 0; font-size: 0.85em;">
+                <strong>✨ Resume Quality: ${app.resumeReview.qualityScore}%</strong>
+                ${app.resumeReview.editorNotes ? `<p style="margin: 5px 0 0 0; color: #7f8c8d;">${escapeHtml(app.resumeReview.editorNotes)}</p>` : ''}
             </div>
+            ` : ''}
 
             <div class="application-content">
                 <div>
@@ -719,7 +734,8 @@ function displayGeneratedApplications() {
                 <label for="approve-${index}" style="font-weight: 600; color: #2c3e50;">Approve this application for submission</label>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 
     // Show submit actions
     document.getElementById('submitActions').style.display = 'block';
@@ -1207,5 +1223,536 @@ function toggleAnalysisResults() {
     }
 }
 
+// Smart Automation Mode Handlers
+let autoModeEnabled = false;
+
+function setupLinkedInHandlers() {
+    const linkedinLoginBtn = document.getElementById('linkedinLoginBtn');
+    const linkedinModal = document.getElementById('linkedinModal');
+    const closeModal = document.getElementById('closeLinkedinModal');
+    const loginForm = document.getElementById('linkedinLoginForm');
+
+    if (linkedinLoginBtn) {
+        linkedinLoginBtn.addEventListener('click', () => {
+            linkedinModal.style.display = 'block';
+        });
+    }
+
+    if (closeModal) {
+        closeModal.addEventListener('click', () => {
+            linkedinModal.style.display = 'none';
+        });
+    }
+
+    // Close on backdrop click
+    if (linkedinModal) {
+        linkedinModal.addEventListener('click', (e) => {
+            if (e.target === linkedinModal) {
+                linkedinModal.style.display = 'none';
+            }
+        });
+    }
+
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('linkedinEmail').value;
+            const password = document.getElementById('linkedinPassword').value;
+
+            try {
+                updateStatusBar('Logging into LinkedIn...', 'info');
+
+                const response = await fetch('/api/linkedin-credentials', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    linkedinModal.style.display = 'none';
+                    updateStatusBar('✓ LinkedIn credentials saved', 'success');
+                    addLog('LinkedIn login successful', 'success');
+
+                    // Update button to show logged in state
+                    linkedinLoginBtn.innerHTML = `
+                        <svg style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px;" viewBox="0 0 24 24" fill="white">
+                            <path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z"></path>
+                        </svg>
+                        ✓ LinkedIn Connected
+                    `;
+                    linkedinLoginBtn.style.background = '#27ae60';
+
+                    // Clear form
+                    loginForm.reset();
+                } else {
+                    updateStatusBar(data.error || 'Failed to save credentials', 'error');
+                }
+            } catch (error) {
+                updateStatusBar('Failed to save LinkedIn credentials', 'error');
+                console.error('LinkedIn login error:', error);
+            }
+        });
+    }
+}
+
+function setupAutomationHandlers() {
+    const autoModeToggle = document.getElementById('autoModeToggle');
+    const autoModeStatus = document.getElementById('autoModeStatus');
+    const autoModeStatusText = document.getElementById('autoModeStatusText');
+    const continueButton = document.getElementById('continueApplication');
+    const dismissButton = document.getElementById('dismissNotification');
+
+    if (autoModeToggle) {
+        autoModeToggle.addEventListener('change', async () => {
+            try {
+                const response = await fetch('/api/toggle-auto-mode', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                autoModeEnabled = data.enabled;
+
+                autoModeStatus.style.display = 'block';
+                autoModeStatusText.textContent = autoModeEnabled
+                    ? '✓ Full Auto Mode Enabled - System will handle applications automatically'
+                    : '✗ Auto Mode Disabled - Manual review required for each application';
+                autoModeStatusText.style.color = autoModeEnabled ? '#27ae60' : '#e74c3c';
+
+                addLog(`Auto mode ${autoModeEnabled ? 'enabled' : 'disabled'}`, autoModeEnabled ? 'success' : 'info');
+            } catch (error) {
+                console.error('Error toggling auto mode:', error);
+                updateStatusBar('Failed to toggle auto mode', 'error');
+            }
+        });
+    }
+
+    if (continueButton) {
+        continueButton.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/smart-resume', {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    hideNotificationPanel();
+                    updateStatusBar('Application resumed', 'success');
+                    addLog('User resumed application after manual input', 'info');
+                } else {
+                    updateStatusBar('Failed to resume application', 'error');
+                }
+            } catch (error) {
+                console.error('Error resuming application:', error);
+                updateStatusBar('Failed to resume application', 'error');
+            }
+        });
+    }
+
+    if (dismissButton) {
+        dismissButton.addEventListener('click', () => {
+            hideNotificationPanel();
+        });
+    }
+}
+
+function showNotificationPanel(data) {
+    const panel = document.getElementById('notificationPanel');
+    const message = document.getElementById('notificationMessage');
+    const fieldsList = document.getElementById('fieldsList');
+
+    message.textContent = data.message || 'Manual input required for this application';
+
+    // Populate fields list
+    fieldsList.innerHTML = '';
+    if (data.fields && data.fields.length > 0) {
+        data.fields.forEach(field => {
+            const li = document.createElement('li');
+            li.textContent = field.field?.label || field.field?.name || 'Unknown field';
+            li.style.marginBottom = '5px';
+            fieldsList.appendChild(li);
+        });
+    }
+
+    panel.style.display = 'block';
+    panel.style.animation = 'slideIn 0.3s ease-out';
+
+    // Play notification sound (optional)
+    playNotificationSound();
+
+    // Scroll to notification
+    panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function hideNotificationPanel() {
+    const panel = document.getElementById('notificationPanel');
+    panel.style.display = 'none';
+}
+
+function playNotificationSound() {
+    // Create a simple beep using Web Audio API
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.frequency.value = 800;
+        oscillator.type = 'sine';
+
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (e) {
+        // Silently fail if Web Audio API is not supported
+    }
+}
+
+// Socket listeners for smart application handler
+socket.on('manualInputRequired', (data) => {
+    showNotificationPanel(data);
+    updateStatusBar('⚠️ Manual input required', 'error');
+    addLog(`Manual input required: ${data.message}`, 'warning');
+});
+
+socket.on('applicationPaused', (data) => {
+    showNotificationPanel(data);
+    updateStatusBar('⏸️ Application paused for manual input', 'info');
+    addLog('Application paused - awaiting user input', 'info');
+});
+
+socket.on('smartHandlerUpdate', (data) => {
+    if (data.message) {
+        addLog(data.message, data.status === 'error' ? 'error' : 'info');
+    }
+
+    if (data.status === 'completed') {
+        updateStatusBar('✓ Application completed successfully', 'success');
+        hideNotificationPanel();
+    } else if (data.status === 'error') {
+        updateStatusBar(`❌ Application error: ${data.error}`, 'error');
+    }
+});
+
+socket.on('autoModeToggled', (data) => {
+    autoModeEnabled = data.enabled;
+    const autoModeToggle = document.getElementById('autoModeToggle');
+    if (autoModeToggle) {
+        autoModeToggle.checked = autoModeEnabled;
+    }
+});
+
+// Test Mode - Search, select 3 random jobs, generate PDFs, and open in new window
+async function runTestMode() {
+    const testBtn = document.getElementById('testModeBtn');
+    const originalText = testBtn.textContent;
+
+    try {
+        testBtn.disabled = true;
+        testBtn.style.opacity = '0.6';
+        testBtn.textContent = '🔄 Running Test Mode...';
+
+        // Step 1: Start job search
+        addLog('🧪 TEST MODE: Starting job search...', 'info');
+
+        const searchResponse = await fetch('/api/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                location: elements.location.value || 'Portland, OR',
+                keywords: elements.keywords.value || 'customer service',
+                maxResults: 20
+            })
+        });
+
+        if (!searchResponse.ok) throw new Error('Search failed');
+
+        // Wait a bit for jobs to be found
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        // Step 2: Get current jobs
+        const statusResponse = await fetch('/api/status');
+        const status = await statusResponse.json();
+
+        if (!status.jobs || status.jobs.length === 0) {
+            throw new Error('No jobs found');
+        }
+
+        addLog(`🧪 TEST MODE: Found ${status.jobs.length} jobs`, 'info');
+
+        // Step 3: Select 3 random jobs
+        const shuffled = status.jobs.sort(() => 0.5 - Math.random());
+        const selectedJobs = shuffled.slice(0, Math.min(3, shuffled.length));
+
+        addLog(`🧪 TEST MODE: Selected ${selectedJobs.length} random jobs for testing`, 'info');
+        selectedJobs.forEach((job, i) => {
+            addLog(`  ${i+1}. ${job.title} at ${job.company}`, 'info');
+        });
+
+        // Step 4: Generate applications
+        testBtn.textContent = '📝 Generating applications...';
+
+        const genResponse = await fetch('/api/generate-applications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobs: selectedJobs })
+        });
+
+        if (!genResponse.ok) throw new Error('Application generation failed');
+
+        const result = await genResponse.json();
+        const applications = result.applications || [];
+        addLog(`🧪 TEST MODE: Generated ${applications.length} applications`, 'success');
+
+        // Step 5: Open PDFs in new window
+        testBtn.textContent = '🚀 Opening in new window...';
+
+        const newWindow = window.open('', '_blank');
+        if (!newWindow) {
+            alert('Please allow popups to view test results');
+            return;
+        }
+
+        // Create HTML page with all PDFs
+        newWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Test Mode - Resume Review</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        margin: 0;
+                        padding: 20px;
+                        background: #f5f5f5;
+                    }
+                    h1 {
+                        color: #2c3e50;
+                        text-align: center;
+                        margin-bottom: 30px;
+                    }
+                    .controls {
+                        text-align: center;
+                        margin-bottom: 20px;
+                    }
+                    .controls button {
+                        margin: 0 10px;
+                        padding: 10px 20px;
+                        border: none;
+                        border-radius: 5px;
+                        cursor: pointer;
+                        font-weight: 600;
+                    }
+                    .job-section {
+                        background: white;
+                        margin-bottom: 30px;
+                        border-radius: 10px;
+                        padding: 20px;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    }
+                    .job-header {
+                        border-bottom: 2px solid #3498db;
+                        padding-bottom: 10px;
+                        margin-bottom: 20px;
+                    }
+                    .job-title {
+                        color: #2c3e50;
+                        font-size: 24px;
+                        font-weight: 600;
+                    }
+                    .job-company {
+                        color: #7f8c8d;
+                        font-size: 16px;
+                    }
+                    .tabs {
+                        display: flex;
+                        gap: 10px;
+                        margin-bottom: 20px;
+                    }
+                    .tab {
+                        padding: 10px 20px;
+                        background: #ecf0f1;
+                        border: none;
+                        border-radius: 5px;
+                        cursor: pointer;
+                        font-weight: 600;
+                    }
+                    .tab.active {
+                        background: #3498db;
+                        color: white;
+                    }
+                    .pdf-container {
+                        width: 100%;
+                        height: 800px;
+                        border: 1px solid #ddd;
+                        border-radius: 5px;
+                        display: none;
+                    }
+                    .pdf-container.active {
+                        display: block;
+                    }
+                    iframe {
+                        width: 100%;
+                        height: 100%;
+                        border: none;
+                    }
+                    .metrics {
+                        background: #ecf0f1;
+                        padding: 15px;
+                        border-radius: 5px;
+                        margin-bottom: 20px;
+                    }
+                    .metric {
+                        display: inline-block;
+                        margin-right: 20px;
+                        color: #2c3e50;
+                        font-weight: 600;
+                    }
+                </style>
+            </head>
+            <body>
+                <h1>🧪 Test Mode - Resume & Cover Letter Review</h1>
+                <div class="controls">
+                    <button onclick="window.print()" style="background: #3498db; color: white;">🖨️ Print All</button>
+                    <button onclick="window.close()" style="background: #95a5a6; color: white;">✕ Close</button>
+                </div>
+        `);
+
+        // Add each job's documents
+        applications.forEach((app, index) => {
+            const metrics = app.atsScore || app.resumeMetrics || {};
+            newWindow.document.write(`
+                <div class="job-section">
+                    <div class="job-header">
+                        <div class="job-title">${app.job.title}</div>
+                        <div class="job-company">${app.job.company}</div>
+                    </div>
+                    ${metrics.matchedSkills ? `
+                    <div class="metrics">
+                        <span class="metric">📊 Skills Match: ${metrics.matchedSkills}/${metrics.totalSkills} (${metrics.matchPercentage}%)</span>
+                        <span class="metric">⭐ ATS Score: ${metrics.atsScore || 'N/A'}</span>
+                    </div>
+                    ` : ''}
+                    <div class="tabs">
+                        <button class="tab active" onclick="showPdf(${index}, 'resume')">📄 Resume</button>
+                        <button class="tab" onclick="showPdf(${index}, 'cover')">📝 Cover Letter</button>
+                    </div>
+                    <div id="resume-${index}" class="pdf-container active">
+                        <iframe src="/api/download-resume/${index}"></iframe>
+                    </div>
+                    <div id="cover-${index}" class="pdf-container">
+                        <iframe src="/api/download-cover-letter/${index}"></iframe>
+                    </div>
+                    <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 2px solid #ecf0f1;">
+                        <button id="submit-btn-${index}" class="submit-btn" onclick="submitApplication(${index})" style="background: #27ae60; color: white; padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; font-size: 16px;">
+                            ✅ Submit Application
+                        </button>
+                        <div id="submit-status-${index}" style="margin-top: 10px; font-weight: 600;"></div>
+                    </div>
+                </div>
+            `);
+        });
+
+        // Store applications data in the new window for submission
+        newWindow.applicationsData = applications;
+
+        newWindow.document.write(`
+                <script>
+                    function showPdf(jobIndex, type) {
+                        // Update tabs
+                        const section = document.querySelectorAll('.job-section')[jobIndex];
+                        const tabs = section.querySelectorAll('.tab');
+                        tabs.forEach(t => t.classList.remove('active'));
+                        tabs[type === 'resume' ? 0 : 1].classList.add('active');
+
+                        // Update containers
+                        const containers = section.querySelectorAll('.pdf-container');
+                        containers.forEach(c => c.classList.remove('active'));
+                        containers[type === 'resume' ? 0 : 1].classList.add('active');
+                    }
+
+                    async function submitApplication(index) {
+                        const btn = document.getElementById('submit-btn-' + index);
+                        const status = document.getElementById('submit-status-' + index);
+                        const app = window.applicationsData[index];
+
+                        if (!app) {
+                            status.innerHTML = '<span style="color: #e74c3c;">❌ Application data not found</span>';
+                            return;
+                        }
+
+                        try {
+                            btn.disabled = true;
+                            btn.style.opacity = '0.6';
+                            btn.textContent = '⏳ Submitting...';
+                            status.innerHTML = '<span style="color: #f39c12;">Submitting application...</span>';
+
+                            const response = await fetch('http://localhost:3000/api/submit-applications', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ applications: [app] })
+                            });
+
+                            if (!response.ok) {
+                                throw new Error('Submission failed');
+                            }
+
+                            const result = await response.json();
+
+                            if (result.submitted > 0) {
+                                btn.style.background = '#95a5a6';
+                                btn.textContent = '✅ Submitted!';
+                                status.innerHTML = '<span style="color: #27ae60;">✅ Application submitted successfully!</span>';
+                            } else {
+                                throw new Error('Submission was not successful');
+                            }
+                        } catch (error) {
+                            btn.disabled = false;
+                            btn.style.opacity = '1';
+                            btn.textContent = '✅ Submit Application';
+                            status.innerHTML = '<span style="color: #e74c3c;">❌ ' + error.message + '</span>';
+                        }
+                    }
+                </script>
+            </body>
+            </html>
+        `);
+
+        addLog(`🧪 TEST MODE: Opened ${applications.length} documents in new window`, 'success');
+        testBtn.textContent = '✅ Test Complete!';
+
+        setTimeout(() => {
+            testBtn.textContent = originalText;
+            testBtn.disabled = false;
+            testBtn.style.opacity = '1';
+        }, 3000);
+
+    } catch (error) {
+        console.error('Test mode error:', error);
+        addLog(`❌ TEST MODE ERROR: ${error.message}`, 'error');
+        testBtn.textContent = '❌ Test Failed';
+
+        setTimeout(() => {
+            testBtn.textContent = originalText;
+            testBtn.disabled = false;
+            testBtn.style.opacity = '1';
+        }, 3000);
+    }
+}
+
 // Initialize the application when the page loads
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => {
+    init();
+    setupLinkedInHandlers();
+    setupAutomationHandlers();
+
+    // Add test mode button handler
+    const testModeBtn = document.getElementById('testModeBtn');
+    if (testModeBtn) {
+        testModeBtn.addEventListener('click', runTestMode);
+    }
+});

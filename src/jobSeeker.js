@@ -85,16 +85,32 @@ class JobSeeker {
     }
 
     async searchAllJobBoards(location, keywords) {
+        console.log('🔍 Searching job boards...');
 
         const [indeedJobs, linkedinJobs, craigslistJobs, ziprecruiterJobs, mockJobs] = await Promise.all([
-            this.indeedScraper.searchJobs(location, keywords).catch(() => []),
-            this.linkedinScraper.searchJobs(location, keywords).catch(() => []),
-            this.craigslistScraper.searchJobs(location, keywords).catch(() => []),
-            this.ziprecruiterScraper.searchJobs(location, keywords).catch(() => []),
+            this.indeedScraper.searchJobs(location, keywords).catch((err) => {
+                console.log('⚠️ Indeed search failed (may be blocked by anti-bot)');
+                return [];
+            }),
+            this.linkedinScraper.searchJobs(location, keywords).catch((err) => {
+                console.log('⚠️ LinkedIn search skipped (login required via UI)');
+                return [];
+            }),
+            this.craigslistScraper.searchJobs(location, keywords).catch((err) => {
+                console.log('⚠️ Craigslist search failed');
+                return [];
+            }),
+            this.ziprecruiterScraper.searchJobs(location, keywords).catch((err) => {
+                console.log('⚠️ ZipRecruiter search failed (may be blocked by anti-bot)');
+                return [];
+            }),
             this.mockJobsScraper.searchJobs(location, keywords).catch(() => [])
         ]);
 
-        return [...indeedJobs, ...linkedinJobs, ...craigslistJobs, ...ziprecruiterJobs, ...mockJobs];
+        const allJobs = [...indeedJobs, ...linkedinJobs, ...craigslistJobs, ...ziprecruiterJobs, ...mockJobs];
+        console.log(`✅ Found ${allJobs.length} total jobs across all boards`);
+
+        return allJobs;
     }
 
     async processJobApplication(job, isDryRun) {

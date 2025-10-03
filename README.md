@@ -2,9 +2,9 @@
 
 An automated job search application that finds part-time day jobs in your local area and can automatically submit applications with your resume.
 
-## ⚠️ KNOWN ISSUES
+## 📝 Recent Changes
 
-**Resume Generator Quality**: The current AI-powered resume tailoring system needs a major overhaul. While the hybrid rule-based/AI approach has been implemented to improve consistency, the resume generation quality is still inconsistent and may produce poor formatting or content issues. This is a high-priority item for future development.
+**AI Resume Tailoring Removed**: The AI-powered resume tailoring feature has been removed due to quality concerns. The application now uses your base resume and standard cover letter generation. Experimental AI tailoring code has been archived in `archived/ai-tailoring-experimental/` for potential future development.
 
 ## Features
 
@@ -15,6 +15,7 @@ An automated job search application that finds part-time day jobs in your local 
 - 📊 **Application Tracking**: Keeps track of applied jobs to avoid duplicates
 - 🔒 **Safe Mode**: Dry run option to test without actually applying
 - 📝 **Detailed Logging**: Comprehensive logs of all activities
+- 🧪 **Test Mode**: Preview resumes and cover letters before submitting
 
 ## Setup
 
@@ -71,6 +72,7 @@ Opens a private web dashboard at `http://localhost:3000` with:
 - 📋 Complete application tracking with timestamps
 - 📁 Resume upload functionality
 - 📈 Live search progress and statistics
+- 🧪 Test Mode: Preview and submit applications individually
 
 ### Command Line Interface
 

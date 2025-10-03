@@ -7,6 +7,7 @@ class DocumentGenerator {
     constructor() {
         this.outputDir = path.join(__dirname, '..', 'generated-resumes');
         this.ensureOutputDir();
+        this.validationEnabled = true; // Enable pre-flight validation
     }
 
     async ensureOutputDir() {
@@ -94,9 +95,12 @@ class DocumentGenerator {
             'PROFESSIONAL SUMMARY', 'CORE COMPETENCIES', 'PROFESSIONAL EXPERIENCE',
             'EDUCATION', 'PROFESSIONAL CREDENTIALS', 'CERTIFICATIONS', 'KEY ACHIEVEMENTS'
         ];
-        return headers.some(header => line.includes(header + ':') || line === header || line.trim() === header) ||
-               line.includes('='.repeat(10)) || // Handle underlined headers
-               line.trim().startsWith('EDUCATION & CREDENTIALS');
+        const trimmedLine = line.trim();
+        return headers.some(header =>
+            trimmedLine.includes(header + ':') ||
+            trimmedLine === header ||
+            trimmedLine.startsWith(header)
+        ) || line.includes('='.repeat(10)); // Handle underlined headers
     }
 
     async generateWordDocument(resumeText, filename = 'improved-resume.docx') {
@@ -204,20 +208,42 @@ class DocumentGenerator {
             return await this.generateCoverLetterPDF(content, filename);
         }
 
+        // PRE-FLIGHT VALIDATION AND CRITICAL FIXES
+        if (this.validationEnabled) {
+            console.log('🔍 Running pre-flight validation...');
+
+            // CRITICAL FIX: Ensure bullets are on separate lines
+            // This prevents the "solid block of text" issue
+            content = this.ensureBulletsSeparated(content);
+
+            const validation = this.validateResumeStructure(content);
+
+            if (validation.hasCriticalIssues) {
+                console.warn('⚠️ Critical validation issues found:');
+                validation.issues.forEach(issue => console.warn(`  - ${issue}`));
+
+                // Auto-fix if possible
+                content = this.autoFixResumeStructure(content, validation);
+                console.log('🔧 Applied auto-fixes to resume structure');
+            } else {
+                console.log('✅ Pre-flight validation passed');
+            }
+        }
+
         console.log('🔍 DEBUG: Resume content length:', content.length);
         console.log('🔍 DEBUG: First 200 chars:', content.substring(0, 200));
 
         // First, process the text to handle escaped newlines like the DocumentEditor does
         let processedContent = content
             .replace(/\\n/g, '\n') // Convert escaped newlines to actual newlines
-            .replace(/\s{2,}/g, ' ') // Remove multiple spaces
+            .replace(/ {2,}/g, ' ') // Remove multiple SPACES only (not newlines!)
             .replace(/\n{3,}/g, '\n\n') // Remove excessive line breaks
             .trim();
 
         // Add line breaks before section headers to ensure proper parsing
         const sectionHeaders = [
             'PROFESSIONAL SUMMARY', 'CORE COMPETENCIES', 'PROFESSIONAL EXPERIENCE',
-            'EDUCATION & CREDENTIALS', 'KEY ACHIEVEMENTS', 'CERTIFICATIONS'
+            'EDUCATION', 'KEY ACHIEVEMENTS', 'CERTIFICATIONS'
         ];
 
         for (const header of sectionHeaders) {
@@ -253,10 +279,10 @@ class DocumentGenerator {
             path: filePath,
             format: 'A4',
             margin: {
-                top: '0.75in',
-                right: '0.75in',
-                bottom: '0.75in',
-                left: '0.75in'
+                top: '0.4in',
+                right: '0.5in',
+                bottom: '0.4in',
+                left: '0.5in'
             },
             printBackground: true
         });
@@ -305,10 +331,10 @@ class DocumentGenerator {
                 /* Basic PDF-optimized layout */
                 body {
                     font-family: Arial, sans-serif;
-                    font-size: 11px;
-                    line-height: 1.4;
+                    font-size: 10px;
+                    line-height: 1.3;
                     color: #000;
-                    margin: 0.75in;
+                    margin: 0;
                     padding: 0;
                     background: white;
                 }
@@ -316,71 +342,71 @@ class DocumentGenerator {
                 /* Header styling */
                 .header-section {
                     text-align: center;
-                    margin-bottom: 20px;
+                    margin-bottom: 12px;
                     border-bottom: 1px solid #ccc;
-                    padding-bottom: 10px;
+                    padding-bottom: 6px;
                 }
 
                 .name {
-                    font-size: 18px;
+                    font-size: 16px;
                     font-weight: bold;
-                    margin-bottom: 8px;
+                    margin-bottom: 4px;
                 }
 
                 .contact {
-                    font-size: 10px;
-                    margin-bottom: 3px;
+                    font-size: 9px;
+                    margin-bottom: 2px;
                 }
 
                 /* Section styling with minimal page-break issues */
                 .section-wrapper {
-                    margin-bottom: 20px;
-                    padding-top: 8px;
+                    margin-bottom: 10px;
+                    padding-top: 4px;
                 }
 
                 .section-header {
-                    font-size: 13px;
+                    font-size: 11px;
                     font-weight: bold;
                     color: #000;
-                    margin-top: 16px;
-                    margin-bottom: 10px;
-                    border-bottom: 2px solid #000;
-                    padding-bottom: 3px;
+                    margin-top: 8px;
+                    margin-bottom: 6px;
+                    border-bottom: 1.5px solid #000;
+                    padding-bottom: 2px;
                     text-transform: uppercase;
                 }
 
                 .section-content {
-                    margin-bottom: 12px;
+                    margin-bottom: 6px;
                 }
 
                 /* Experience entries */
                 .job-entry {
-                    margin-bottom: 16px;
-                    padding-bottom: 8px;
+                    margin-bottom: 8px;
+                    padding-bottom: 4px;
                 }
 
                 .job-title {
                     font-weight: bold;
-                    font-size: 11px;
-                    margin-bottom: 3px;
+                    font-size: 10px;
+                    margin-bottom: 2px;
                 }
 
                 .job-details {
-                    font-size: 10px;
+                    font-size: 9px;
                     font-style: italic;
-                    margin-bottom: 6px;
+                    margin-bottom: 4px;
                     color: #333;
                 }
 
                 /* Bullet points with consistent spacing */
                 .bullet {
-                    margin: 3px 0 3px 16px;
-                    font-size: 10px;
-                    line-height: 1.3;
+                    margin: 2px 0 2px 12px;
+                    font-size: 9px;
+                    line-height: 1.25;
                 }
 
                 .bullet-group {
-                    margin-bottom: 6px;
+                    margin-bottom: 4px;
                 }
 
                 /* Skills formatting */
@@ -489,14 +515,14 @@ class DocumentGenerator {
             'Core Competencies', 'CORE COMPETENCIES',
             'Professional Experience', 'PROFESSIONAL EXPERIENCE',
             'Key Achievements', 'KEY ACHIEVEMENTS',
-            'EDUCATION & CREDENTIALS', 'Education', 'Professional Credentials', 'Certifications'
+            'EDUCATION & CREDENTIALS', 'EDUCATION', 'Education', 'Professional Credentials', 'Certifications', 'CERTIFICATIONS'
         ];
 
         for (const sectionName of sectionOrder) {
             if (sections[sectionName]) {
                 // Determine section class based on content
                 let sectionClass = 'section-wrapper';
-                if (sectionName === 'EDUCATION & CREDENTIALS') {
+                if (sectionName === 'EDUCATION & CREDENTIALS' || sectionName === 'EDUCATION' || sectionName === 'Education') {
                     sectionClass += ' education-section';
                 } else if (sectionName === 'Professional Experience' || sectionName === 'PROFESSIONAL EXPERIENCE') {
                     sectionClass += ' experience-section';
@@ -735,6 +761,233 @@ class DocumentGenerator {
 
     getFilePath(filename) {
         return path.join(this.outputDir, filename);
+    }
+
+    /**
+     * CRITICAL: Ensure bullet points are on separate lines
+     * This fixes the "solid block of text" issue
+     */
+    ensureBulletsSeparated(content) {
+        let fixed = content;
+
+        // Fix bullet points that are on the same line (merged together)
+        // Pattern: "text• more text" should become "text\n• more text"
+        fixed = fixed.replace(/([^•\n])(\s*)•\s*/g, '$1\n• ');
+
+        // Fix multiple bullets on same line: "• text • text" -> "• text\n• text"
+        fixed = fixed.replace(/•([^•\n]+)•/g, '•$1\n•');
+
+        // Ensure bullet points have proper line breaks before them
+        // This catches cases where AI merged paragraphs
+        const lines = fixed.split('\n');
+        const fixedLines = [];
+        let inBulletSequence = false;
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+
+            if (line.startsWith('•')) {
+                // This is a bullet point
+                if (!inBulletSequence && fixedLines.length > 0) {
+                    // First bullet after non-bullet content - ensure spacing
+                    const prevLine = fixedLines[fixedLines.length - 1];
+                    if (prevLine.trim() !== '') {
+                        // Previous line has content, keep it
+                    }
+                }
+                fixedLines.push('• ' + line.substring(1).trim());
+                inBulletSequence = true;
+            } else {
+                // Not a bullet point
+                if (line === '') {
+                    // Empty line
+                    fixedLines.push('');
+                } else {
+                    // Regular content line
+                    fixedLines.push(line);
+                }
+                if (line !== '') {
+                    inBulletSequence = false;
+                }
+            }
+        }
+
+        fixed = fixedLines.join('\n');
+
+        // Fix any remaining formatting issues
+        fixed = fixed.replace(/\n{4,}/g, '\n\n\n'); // Max 3 line breaks
+        fixed = fixed.replace(/([^\n])(PROFESSIONAL EXPERIENCE|EDUCATION|CERTIFICATIONS)/g, '$1\n\n$2');
+
+        return fixed;
+    }
+
+    /**
+     * Pre-flight validation for resume structure
+     */
+    validateResumeStructure(content) {
+        const validation = {
+            hasCriticalIssues: false,
+            issues: [],
+            warnings: []
+        };
+
+        // Check for required sections
+        const requiredSections = [
+            'PROFESSIONAL SUMMARY',
+            'CORE COMPETENCIES',
+            'PROFESSIONAL EXPERIENCE',
+            'EDUCATION'
+        ];
+
+        for (const section of requiredSections) {
+            if (!content.includes(section)) {
+                validation.issues.push(`Missing required section: ${section}`);
+                validation.hasCriticalIssues = true;
+            }
+        }
+
+        // Check for contact information in first 500 characters
+        const header = content.substring(0, 500);
+        if (!/@/.test(header)) {
+            validation.warnings.push('Email address not found in header');
+        }
+        if (!/\+?\d{1,3}[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/.test(header)) {
+            validation.warnings.push('Phone number not found in header');
+        }
+
+        // Check for proper section spacing
+        const lines = content.split('\n');
+        let previousLineEmpty = false;
+        let consecutiveEmptyLines = 0;
+
+        for (const line of lines) {
+            if (line.trim() === '') {
+                consecutiveEmptyLines++;
+                previousLineEmpty = true;
+            } else {
+                if (consecutiveEmptyLines > 3) {
+                    validation.warnings.push('Excessive blank lines detected (may cause formatting issues)');
+                }
+                consecutiveEmptyLines = 0;
+                previousLineEmpty = false;
+            }
+        }
+
+        // Check for sections without proper spacing
+        for (const section of requiredSections) {
+            const sectionIndex = content.indexOf(section);
+            if (sectionIndex > 0) {
+                // Check if there's proper spacing before section
+                const before = content.substring(Math.max(0, sectionIndex - 10), sectionIndex);
+                if (!/\n\n/.test(before)) {
+                    validation.warnings.push(`Section "${section}" lacks proper spacing`);
+                }
+            }
+        }
+
+        // Check for bullet points
+        const bulletCount = (content.match(/•/g) || []).length;
+        if (bulletCount < 5) {
+            validation.warnings.push('Low bullet point count (may indicate formatting issues)');
+        }
+
+        return validation;
+    }
+
+    /**
+     * Auto-fix resume structure issues
+     */
+    autoFixResumeStructure(content, validation) {
+        let fixed = content;
+
+        // Fix 1: Ensure proper spacing around section headers
+        const sections = [
+            'PROFESSIONAL SUMMARY',
+            'CORE COMPETENCIES',
+            'PROFESSIONAL EXPERIENCE',
+            'EDUCATION',
+            'CERTIFICATIONS'
+        ];
+
+        for (const section of sections) {
+            // Add double line break before and after section headers
+            const regex = new RegExp(`([^\\n])(${section})([^\\n])`, 'g');
+            fixed = fixed.replace(regex, `$1\n\n${section}\n\n$3`);
+
+            // Also handle cases where section is at start/end of string
+            fixed = fixed.replace(new RegExp(`^(${section})([^\\n])`, 'gm'), `${section}\n\n$2`);
+            fixed = fixed.replace(new RegExp(`([^\\n])(${section})$`, 'gm'), `$1\n\n${section}`);
+        }
+
+        // Fix 2: Remove excessive blank lines (max 2 consecutive)
+        fixed = fixed.replace(/\n{4,}/g, '\n\n\n');
+
+        // Fix 3: Ensure bullet points have consistent formatting
+        fixed = fixed.replace(/^[-*]\s/gm, '• ');
+
+        // Fix 4: Remove trailing spaces
+        fixed = fixed.replace(/[ \t]+$/gm, '');
+
+        // Fix 5: Ensure proper line breaks after contact info
+        const lines = fixed.split('\n');
+        if (lines.length > 3) {
+            // Find where contact info ends (usually after phone/email)
+            let contactEndIndex = -1;
+            for (let i = 0; i < Math.min(10, lines.length); i++) {
+                if (/@/.test(lines[i]) || /\+?\d{1,3}[-.\s]?\(?\d{3}\)?/.test(lines[i])) {
+                    contactEndIndex = i;
+                }
+            }
+
+            if (contactEndIndex >= 0 && contactEndIndex < lines.length - 1) {
+                // Ensure 2-3 blank lines after contact info
+                if (lines[contactEndIndex + 1].trim() !== '') {
+                    lines.splice(contactEndIndex + 1, 0, '', '');
+                }
+            }
+
+            fixed = lines.join('\n');
+        }
+
+        return fixed;
+    }
+
+    /**
+     * Validate PDF output quality
+     */
+    async validatePDFOutput(pdfPath) {
+        try {
+            // Check file exists and has content
+            const stats = await fs.stat(pdfPath);
+            if (stats.size < 1000) {
+                console.warn('⚠️ PDF file size unusually small:', stats.size, 'bytes');
+                return {
+                    valid: false,
+                    issue: 'PDF file size too small'
+                };
+            }
+
+            if (stats.size > 500000) {
+                console.warn('⚠️ PDF file size unusually large:', stats.size, 'bytes');
+                return {
+                    valid: true,
+                    warning: 'PDF file size larger than expected'
+                };
+            }
+
+            console.log('✅ PDF validation passed:', stats.size, 'bytes');
+            return {
+                valid: true,
+                size: stats.size
+            };
+
+        } catch (error) {
+            console.error('❌ PDF validation failed:', error.message);
+            return {
+                valid: false,
+                issue: error.message
+            };
+        }
     }
 }
 

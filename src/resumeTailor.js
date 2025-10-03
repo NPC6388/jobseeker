@@ -2,12 +2,18 @@ const fs = require('fs-extra');
 const path = require('path');
 const mammoth = require('mammoth');
 const ResumeImprover = require('./resumeImprover');
+const AIResumeEditor = require('./aiResumeEditor');
+const KeywordOptimizer = require('./keywordOptimizer');
+const AchievementRewriter = require('./achievementRewriter');
 
 class ResumeTailor {
     constructor() {
         this.baseResume = null;
         this.resumePath = process.env.RESUME_PATH || './matthew-nicholson-resume.docx';
         this.resumeImprover = new ResumeImprover();
+        this.aiEditor = new AIResumeEditor();
+        this.keywordOptimizer = new KeywordOptimizer();
+        this.achievementRewriter = new AchievementRewriter();
     }
 
     async loadBaseResume() {
@@ -832,23 +838,111 @@ class ResumeTailor {
         }
 
         try {
-            console.log('🎯 Starting rule-based resume tailoring for:', job.title);
+            console.log('🎯 Starting ENHANCED resume tailoring pipeline for:', job.title);
+            console.log('📊 Pipeline: Rule-based → Keyword Optimization → Achievement Enhancement → AI Polish');
 
-            // USE RULE-BASED APPROACH FOR RELIABLE RESULTS
+            // PHASE 1: Rule-based tailoring (existing logic)
+            console.log('\n📋 Phase 1: Rule-based customization...');
             const tailoredResume = this.generateRuleBasedTailoredResume(job);
 
-            // Generate the final resume text using our professional formatter
-            const resumeText = this.generateResumeText(tailoredResume, job);
+            // PHASE 2: Advanced keyword optimization
+            console.log('\n🔍 Phase 2: Keyword analysis and optimization...');
+            const keywords = this.keywordOptimizer.analyzeJobKeywords(
+                job.description || job.summary || '',
+                job.title
+            );
+            console.log(`  → Found ${keywords.critical.length} critical keywords, ${keywords.important.length} important keywords`);
+
+            // Generate initial resume text
+            let resumeText = this.generateResumeText(tailoredResume, job);
+
+            // Calculate keyword density
+            const densityReport = this.keywordOptimizer.calculateKeywordDensity(resumeText, keywords);
+            console.log(`  → Keyword density: ${densityReport.overall.toFixed(1)}% (target: 2-4%)`);
+
+            // Optimize keyword placement if density is low
+            if (densityReport.overall < 2.0 || keywords.critical.some(k => densityReport.critical[k]?.count === 0)) {
+                console.log('  → Optimizing keyword placement...');
+                resumeText = this.keywordOptimizer.optimizeKeywordPlacement(resumeText, keywords, densityReport);
+            }
+
+            // PHASE 3: Achievement enhancement
+            console.log('\n💪 Phase 3: Achievement enhancement...');
+            if (tailoredResume.experience && tailoredResume.experience.length > 0) {
+                for (let i = 0; i < tailoredResume.experience.length; i++) {
+                    const exp = tailoredResume.experience[i];
+                    if (exp.achievements && exp.achievements.length > 0) {
+                        exp.achievements = this.achievementRewriter.rewriteForJob(
+                            exp.achievements,
+                            job,
+                            exp
+                        );
+                    }
+                }
+                // Regenerate resume text with enhanced achievements
+                resumeText = this.generateResumeText(tailoredResume, job);
+            }
+
+            // PHASE 4: AI Editor polish (if API key available and enabled)
+            // Set DISABLE_AI_EDITOR=true to skip AI polish and use rule-based only
+            // TEMPORARILY DISABLED FOR DEBUGGING
+            if (false && process.env.OPENAI_API_KEY && process.env.DISABLE_AI_EDITOR !== 'true') {
+                console.log('\n✨ Phase 4: AI editor review and polish...');
+                try {
+                    const editorResults = await this.aiEditor.editAndValidate(resumeText, job);
+
+                    // Only use AI edited text if it passes validation AND has proper formatting
+                    const hasProperBullets = editorResults.editedText.includes('\n• ');
+                    const noMergedSections = !editorResults.editedText.includes('PROFESSIONAL EXPERIENCE') ||
+                                           (editorResults.editedText.match(/PROFESSIONAL EXPERIENCE/g) || []).length === 1;
+
+                    if (editorResults.passed && hasProperBullets && noMergedSections) {
+                        console.log(`  ✅ AI Editor: PASSED (ATS: ${editorResults.atsScore}, Quality: ${editorResults.qualityScore})`);
+                        resumeText = editorResults.editedText;
+                    } else {
+                        console.log(`  ⚠️ AI Editor validation failed, using rule-based resume`);
+                        if (!hasProperBullets) console.log('    - Bullet points were merged');
+                        if (!noMergedSections) console.log('    - Duplicate section headers detected');
+                        // Keep original rule-based resume
+                    }
+                } catch (editorError) {
+                    console.warn('  ⚠️ AI Editor failed, using rule-based resume:', editorError.message);
+                }
+            } else if (process.env.DISABLE_AI_EDITOR === 'true') {
+                console.log('\n⚠️ AI editor disabled (DISABLE_AI_EDITOR=true)');
+            } else {
+                console.log('\n⚠️ Skipping AI editor (OPENAI_API_KEY not set)');
+            }
+
+            // PHASE 5: Final validation
+            console.log('\n🔍 Phase 5: Final quality check...');
+            const finalScore = this.calculateFinalScore(resumeText, keywords);
+            console.log(`  → Final Score: ${finalScore.overall}/100 (ATS: ${finalScore.ats}, Keywords: ${finalScore.keywords}, Quality: ${finalScore.quality})`);
+
+            console.log('\n✅ Enhanced tailoring complete!\n');
+
+            // DEBUG: Log the resume text to see structure
+            console.log('🔍 RESUME TEXT DEBUG:');
+            console.log('📄 First 1000 characters:');
+            console.log(resumeText.substring(0, 1000));
+            console.log('\n📄 Last 500 characters:');
+            console.log(resumeText.substring(resumeText.length - 500));
 
             return {
                 tailoredResume: {
                     ...tailoredResume,
                     resumeText: resumeText
+                },
+                metrics: {
+                    keywordDensity: densityReport.overall,
+                    criticalKeywordsCovered: Object.values(densityReport.critical).filter(k => k.count > 0).length,
+                    totalCriticalKeywords: keywords.critical.length,
+                    finalScore: finalScore.overall
                 }
             };
 
         } catch (error) {
-            console.error('Error tailoring resume:', error);
+            console.error('❌ Error in tailoring pipeline:', error);
             // Return a safe fallback
             return {
                 tailoredResume: {
@@ -857,6 +951,41 @@ class ResumeTailor {
                 }
             };
         }
+    }
+
+    /**
+     * Calculate final quality score
+     */
+    calculateFinalScore(resumeText, keywords) {
+        const scores = {
+            ats: 0,
+            keywords: 0,
+            quality: 0,
+            overall: 0
+        };
+
+        // ATS Score (40 points)
+        const requiredSections = ['PROFESSIONAL SUMMARY', 'CORE COMPETENCIES', 'PROFESSIONAL EXPERIENCE', 'EDUCATION'];
+        const sectionScore = requiredSections.filter(s => resumeText.includes(s)).length;
+        scores.ats = Math.round((sectionScore / requiredSections.length) * 40);
+
+        // Keyword Score (35 points)
+        const resumeLower = resumeText.toLowerCase();
+        const criticalMatches = keywords.critical.filter(k => resumeLower.includes(k.toLowerCase())).length;
+        const criticalTotal = keywords.critical.length || 1;
+        scores.keywords = Math.round((criticalMatches / criticalTotal) * 35);
+
+        // Quality Score (25 points)
+        const hasNumbers = /\d+%|\d+\+/.test(resumeText);
+        const wordCount = resumeText.split(/\s+/).length;
+        const goodLength = wordCount >= 400 && wordCount <= 800;
+
+        scores.quality += hasNumbers ? 10 : 0;
+        scores.quality += goodLength ? 15 : 5;
+
+        scores.overall = scores.ats + scores.keywords + scores.quality;
+
+        return scores;
     }
 
     /**
@@ -1638,8 +1767,10 @@ class ResumeTailor {
         const linkedin = resume.personalInfo.linkedin || '';
 
         // Professional header with proper spacing
+        // Put phone on separate line to prevent line breaks
         resumeText += `${name}\n`;
-        resumeText += `${phone} | ${email} | ${location}`;
+        resumeText += `${phone}\n`;
+        resumeText += `${email} | ${location}`;
         if (linkedin) {
             resumeText += ` | ${linkedin}`;
         }
