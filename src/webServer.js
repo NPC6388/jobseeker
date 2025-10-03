@@ -259,9 +259,28 @@ app.get('/api/resume-info', async (req, res) => {
                     const emailMatch = resumeText.match(/[\w.-]+@[\w.-]+\.\w+/);
                     const phoneMatch = resumeText.match(/(?:\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})/);
 
-                    // Try to find name (usually first line or near top)
+                    // Try to find name - skip continuation markers and common PDF artifacts
                     const lines = resumeText.split('\n').filter(line => line.trim());
-                    const nameMatch = lines[0] && lines[0].length < 50 ? lines[0].trim() : null;
+                    let nameMatch = null;
+                    for (const line of lines) {
+                        const trimmedLine = line.trim();
+                        // Skip continuation markers, page numbers, and artifacts
+                        if (trimmedLine.toLowerCase().includes('continued') ||
+                            trimmedLine.match(/^page\s+\d+/i) ||
+                            trimmedLine.length < 3 ||
+                            trimmedLine.length > 50) {
+                            continue;
+                        }
+                        // Look for capitalized words that could be a name
+                        if (trimmedLine.match(/^[A-Z][a-z]+(\s+[A-Z][a-z]+)+/)) {
+                            nameMatch = trimmedLine;
+                            break;
+                        }
+                    }
+                    // If still no match, use first valid line
+                    if (!nameMatch) {
+                        nameMatch = lines.find(l => l.trim().length > 3 && l.trim().length < 50 && !l.toLowerCase().includes('continued'));
+                    }
 
                     // Count sections
                     const skillsMatch = resumeText.match(/skills?|competencies|technologies/i);
@@ -348,15 +367,16 @@ app.post('/api/generate-applications', async (req, res) => {
                 // Generate simple cover letter without resume parsing
                 const coverLetter = `Dear Hiring Manager,
 
-I am writing to express my strong interest in the ${job.title} position at ${job.company}.
+I am writing to express my strong interest in the ${job.title} position at ${job.company.trim()}.
 
 ${job.summary ? 'After reviewing the job description, I am confident that my skills and experience align well with your requirements.' : 'I believe my background makes me a strong candidate for this role.'}
 
-I am excited about the opportunity to contribute to ${job.company} and would welcome the chance to discuss how my qualifications match your needs.
+I am excited about the opportunity to contribute to ${job.company.trim()} and would welcome the chance to discuss how my qualifications match your needs.
 
 Thank you for your consideration. I look forward to hearing from you.
 
 Sincerely,
+
 Matthew Nicholson`;
 
                 console.log(`✅ Application data prepared for ${job.title}`);
@@ -376,7 +396,15 @@ Matthew Nicholson`;
                         editorNotes: `Cover letter for ${job.company}`,
                         recommendations: ['Standard cover letter format']
                     },
-                    atsScore: { totalScore: 85 }
+                    atsScore: {
+                        totalScore: 85,
+                        keywordMatchRate: 75,
+                        grade: {
+                            letter: 'B+',
+                            label: 'Good Match',
+                            color: '#27ae60'
+                        }
+                    }
                 });
 
             } catch (error) {

@@ -711,11 +711,10 @@ function displayGeneratedApplications() {
             <div class="application-content">
                 <div>
                     <h4 style="margin: 0 0 10px 0; color: #2c3e50;">
-                        📄 Tailored Resume
-                        <a href="/api/download-tailored-resume/${index}" target="_blank" style="margin-left: 10px; color: #3498db; text-decoration: none; font-size: 0.85em;">📥 Open PDF</a>
+                        📄 Your Resume
                     </h4>
                     <div class="resume-preview">
-                        <pre style="white-space: pre-wrap; font-family: inherit; margin: 0; font-size: 0.85em; line-height: 1.4;">${escapeHtml((app.resumeText || 'Resume content not available').substring(0, 1000))}${(app.resumeText || '').length > 1000 ? '...\n\n[Resume continues...]' : ''}</pre>
+                        <p style="margin: 0; font-size: 0.9em; color: #7f8c8d;">Using your uploaded resume file</p>
                     </div>
                 </div>
                 <div>
