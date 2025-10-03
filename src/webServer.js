@@ -5,7 +5,7 @@ const socketIo = require('socket.io');
 const fs = require('fs-extra');
 const path = require('path');
 const multer = require('multer');
-const pdfParse = require('pdf-parse');
+const pdf = require('pdf-parse');
 const JobSeeker = require('./jobSeeker');
 const ResumeTailor = require('./resumeTailor');
 const CoverLetterGenerator = require('./coverLetterGenerator');
@@ -245,7 +245,7 @@ app.get('/api/resume-info', async (req, res) => {
                 if (ext === '.pdf') {
                     // Parse PDF
                     const dataBuffer = await fs.readFile(fullPath);
-                    const data = await pdfParse(dataBuffer);
+                    const data = await pdf(dataBuffer);
                     resumeText = data.text;
                 } else if (ext === '.docx' || ext === '.doc') {
                     // Parse DOCX using mammoth
